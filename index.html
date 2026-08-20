@@ -3,79 +3,204 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>모덕마블 | CITY LOOP</title>
+    <title>모덕마블 | WORLD GEOGRAPHY</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Jua&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    <!-- 게임 설정 모달 -->
     <div id="setup-modal" class="setup-modal">
       <div class="setup-card">
-        <p class="setup-eyebrow">CITY LOOP BOARD GAME</p>
+        <p class="setup-eyebrow">초등 6학년 사회과 탐험 보드게임</p>
         <h1>모덕마블</h1>
-        <p>게임에 참여할 인원과 이름을 정해주세요.</p>
-        <div class="setup-counts">
+        <p>게임에 참여할 인원과 목표 라운드를 정해주세요.</p>
+        
+        <div class="setup-section-label">참여 인원</div>
+        <div class="setup-counts player-count-select">
           <button class="setup-count active" data-count="2">2인</button>
           <button class="setup-count" data-count="3">3인</button>
           <button class="setup-count" data-count="4">4인</button>
         </div>
+
+        <div class="setup-section-label">목표 라운드</div>
+        <div class="setup-counts round-count-select">
+          <button class="setup-round" data-rounds="5">5라운드 (빠름)</button>
+          <button class="setup-round active" data-rounds="10">10라운드 (표준)</button>
+          <button class="setup-round" data-rounds="15">15라운드 (심화)</button>
+        </div>
+
+        <div class="setup-section-label">플레이어 이름</div>
         <div id="name-fields" class="name-fields"></div>
         <button id="start-game" class="start-game">게임 시작하기 <span>↗</span></button>
       </div>
     </div>
+
+    <!-- 퀴즈 모달 -->
     <div id="quiz-modal" class="setup-modal hidden">
       <div class="setup-card quiz-card">
-        <p class="setup-eyebrow">LANDMARK QUIZ</p>
+        <p class="setup-eyebrow" id="quiz-eyebrow">WORLD GEOGRAPHY & CLIMATE</p>
         <h1 id="quiz-title">퀴즈</h1>
         <p id="quiz-question">문제를 풀고 이 나라의 땅을 획득하세요.</p>
         <div id="quiz-options" class="quiz-options"></div>
         <p id="quiz-result" class="quiz-result"></p>
+        <p id="quiz-explanation" class="quiz-explanation hidden"></p>
         <div id="purchase-actions" class="purchase-actions hidden">
           <p id="purchase-question">이 땅을 구매하시겠습니까?</p>
           <button id="buy-property">구매하기</button>
           <button id="skip-property">구매하지 않기</button>
         </div>
+        <div id="special-actions" class="purchase-actions hidden">
+          <button id="claim-special">확인</button>
+        </div>
       </div>
     </div>
+
+    <!-- 타일 정보 카드 미리보기 모달 -->
+    <div id="info-modal" class="setup-modal hidden">
+      <div class="setup-card info-card">
+        <p class="setup-eyebrow" id="info-tag">지리 탐구 정보</p>
+        <h1 id="info-title">국가 정보</h1>
+        <div id="info-photo" class="info-photo"></div>
+        <p id="info-desc" class="info-desc"></p>
+        <div class="info-stats">
+          <div class="info-stat-item"><span>토지 가격</span><strong id="info-cost">₩0</strong></div>
+          <div class="info-stat-item"><span>현재 소유자</span><strong id="info-owner">없음</strong></div>
+          <div class="info-stat-item"><span>현재 통행세</span><strong id="info-toll">₩0</strong></div>
+        </div>
+        <button id="close-info" class="start-game" style="margin-top: 15px;">닫기 <span>✕</span></button>
+      </div>
+    </div>
+
+    <!-- 최종 게임 결과 / 우승 모달 -->
+    <div id="game-over-modal" class="setup-modal hidden">
+      <div class="setup-card victory-card">
+        <p class="setup-eyebrow">GAME SET · FINAL RESULTS</p>
+        <h1>🏆 탐험 결과 발표</h1>
+        <p>모든 라운드가 종료되었습니다! 최종 자산 순위입니다.</p>
+        <div id="victory-ranking" class="victory-ranking"></div>
+        <button id="restart-game" class="start-game" style="margin-top: 20px;">다시 플레이하기 <span>↺</span></button>
+      </div>
+    </div>
+
     <main class="app-shell">
       <header class="topbar">
-        <div class="brand"><span class="brand-mark">✦</span><span>CITY LOOP</span></div>
-        <div class="room-status"><span class="status-dot"></span> PRIVATE ROOM <span class="room-code">A7K-39F</span></div>
-        <button class="icon-button" aria-label="설정">☼</button>
+        <div class="brand"><span class="brand-mark">✦</span><span>모덕마블 CITY LOOP</span></div>
+        <div class="room-status"><span class="status-dot"></span> 6학년 사회과 <span class="room-code">세계의 자연환경과 생활</span></div>
+        <div class="topbar-controls">
+          <button id="sound-toggle" class="sound-toggle-btn" aria-label="효과음 토글">🔊 소리 ON</button>
+        </div>
       </header>
 
       <section class="game-layout">
         <div class="board-section">
-          <div class="section-kicker">01 / MAIN BOARD</div>
+          <div class="section-kicker">
+            <span>01 / MAIN BOARD (타일을 클릭하면 정보 확인)</span>
+            <span id="target-round-display">목표: 10라운드</span>
+          </div>
           <div class="board-frame">
             <div id="board" class="board" aria-label="32칸 보드게임판"></div>
             <div class="board-center">
               <div class="game-title">모덕마블</div>
-              <div class="city-loop-label">CITY <strong>LOOP</strong></div>
-              <p class="center-subtitle">문제를 풀고 땅을 차지하세요</p>
-              <div class="center-dice-row"><div class="dice-row"><div class="die-scene"><div id="die-one" class="die"><i class="die-face front">2</i><i class="die-face back">5</i><i class="die-face right">3</i><i class="die-face left">4</i><i class="die-face top">6</i><i class="die-face bottom">1</i></div></div><div class="die-scene"><div id="die-two" class="die"><i class="die-face front">4</i><i class="die-face back">3</i><i class="die-face right">6</i><i class="die-face left">1</i><i class="die-face top">2</i><i class="die-face bottom">5</i></div></div><span class="sum">= <strong id="roll-sum">6</strong></span></div><button id="roll-button" class="roll-button"><span>주사위 굴리기</span><span class="button-arrow">↗</span></button></div>
+              <div class="city-loop-label">WORLD <strong>GEOGRAPHY</strong></div>
+              <p class="center-subtitle">세계의 기후와 지형을 탐험하세요</p>
+              
+              <!-- 단일 주사위 영역 -->
+              <div class="center-dice-row">
+                <div class="single-die-wrapper">
+                  <div class="die-scene">
+                    <div id="die-one" class="die">
+                      <i class="die-face front">1</i>
+                      <i class="die-face back">6</i>
+                      <i class="die-face right">3</i>
+                      <i class="die-face left">4</i>
+                      <i class="die-face top">5</i>
+                      <i class="die-face bottom">2</i>
+                    </div>
+                  </div>
+                  <span class="sum"><strong id="roll-sum">1</strong>칸</span>
+                </div>
+                <button id="roll-button" class="roll-button">
+                  <span>주사위 굴리기</span>
+                  <span class="button-arrow">🎲</span>
+                </button>
+              </div>
+              
               <p id="center-message" class="center-message">게임을 시작해보세요!</p>
             </div>
           </div>
-          <div class="board-caption"><span>ROUND <strong id="round-number">01</strong></span><span>TIME <strong id="timer">03:42</strong></span><span class="legend"><i class="legend-dot player-one"></i> YOU <i class="legend-dot player-two"></i> MAYA</span></div>
+          <div class="board-caption">
+            <span>ROUND <strong id="round-number">01</strong> / <span id="max-round-text">10</span></span>
+            <span>TIME <strong id="timer">00:00</strong></span>
+            <span class="legend" id="board-legend"></span>
+          </div>
         </div>
 
         <aside class="sidebar">
           <div class="turn-panel">
             <div class="section-kicker">CURRENT TURN</div>
-            <div class="turn-heading"><span class="avatar you">Y</span><div><span class="muted">YOUR TURN</span><h1>행운을 굴려요.</h1></div></div>
+            <div class="turn-heading">
+              <span class="avatar you" id="current-turn-avatar">1</span>
+              <div>
+                <span class="muted" id="current-turn-label">PLAYER 1 TURN</span>
+                <h1 id="current-turn-name">플레이어 1</h1>
+              </div>
+            </div>
           </div>
 
           <div class="players-panel">
-            <div class="section-kicker">PLAYERS <span>02 / 04</span></div>
-            <div class="player-row active" data-player-row="0"><span class="avatar you">1</span><div class="player-info"><strong class="player-name">플레이어 1</strong><span>현재 위치</span></div><strong class="money">₩200,000</strong></div>
-            <div class="player-row" data-player-row="1"><span class="avatar maya">2</span><div class="player-info"><strong class="player-name">플레이어 2</strong><span>현재 위치</span></div><strong class="money">₩200,000</strong></div>
-            <div class="player-row extra-player" data-player-row="2"><span class="avatar player-three">3</span><div class="player-info"><strong class="player-name">플레이어 3</strong><span>현재 위치</span></div><strong class="money">₩200,000</strong></div>
-            <div class="player-row extra-player" data-player-row="3"><span class="avatar player-four">4</span><div class="player-info"><strong class="player-name">플레이어 4</strong><span>현재 위치</span></div><strong class="money">₩200,000</strong></div>
+            <div class="section-kicker">PLAYERS <span id="player-count-num">02 / 04</span></div>
+            <div class="player-row active" data-player-row="0">
+              <span class="avatar you">1</span>
+              <div class="player-info">
+                <strong class="player-name">플레이어 1</strong>
+                <span class="player-location">출발지</span>
+              </div>
+              <div class="player-assets">
+                <strong class="money">₩200,000</strong>
+                <span class="asset-total">총 ₩200,000</span>
+              </div>
+            </div>
+            <div class="player-row" data-player-row="1">
+              <span class="avatar maya">2</span>
+              <div class="player-info">
+                <strong class="player-name">플레이어 2</strong>
+                <span class="player-location">출발지</span>
+              </div>
+              <div class="player-assets">
+                <strong class="money">₩200,000</strong>
+                <span class="asset-total">총 ₩200,000</span>
+              </div>
+            </div>
+            <div class="player-row extra-player" data-player-row="2">
+              <span class="avatar player-three">3</span>
+              <div class="player-info">
+                <strong class="player-name">플레이어 3</strong>
+                <span class="player-location">출발지</span>
+              </div>
+              <div class="player-assets">
+                <strong class="money">₩200,000</strong>
+                <span class="asset-total">총 ₩200,000</span>
+              </div>
+            </div>
+            <div class="player-row extra-player" data-player-row="3">
+              <span class="avatar player-four">4</span>
+              <div class="player-info">
+                <strong class="player-name">플레이어 4</strong>
+                <span class="player-location">출발지</span>
+              </div>
+              <div class="player-assets">
+                <strong class="money">₩200,000</strong>
+                <span class="asset-total">총 ₩200,000</span>
+              </div>
+            </div>
           </div>
 
-          <div class="log-panel"><div class="section-kicker">ACTIVITY LOG</div><p><span>03:41</span> You rolled <b>2 + 4</b></p><p><span>03:36</span> Maya arrived at <b>Old Town</b></p><p><span>03:28</span> You collected <b>$120</b></p></div>
+          <div class="log-panel" id="log-panel">
+            <div class="section-kicker">ACTIVITY LOG</div>
+            <div id="log-list"></div>
+          </div>
         </aside>
       </section>
     </main>
