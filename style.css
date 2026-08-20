@@ -246,10 +246,16 @@ button { font: inherit; }
 .tile.photo-tile {
   position: relative;
   isolation: isolate;
+  background-color: #2b3a4a;
   background-size: cover;
   background-position: center;
   color: var(--white);
 }
+
+.tile.photo-tile.accent-blue { background-color: #2d4554; }
+.tile.photo-tile.accent-yellow { background-color: #4a442d; }
+.tile.photo-tile.accent-mint { background-color: #284439; }
+.tile.photo-tile.accent-pink { background-color: #4d2f35; }
 
 .tile.photo-tile::after {
   position: absolute;
