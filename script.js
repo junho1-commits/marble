@@ -1,4 +1,4 @@
-// 2022 개정 초등 사회과 교육과정 [6사10-01], [6사10-02], [6사09-01] 연계 모덕마블
+// 2022 개정 초등 사회과 교육과정 [6사10-01], [6사10-02], [6사09-01] 연계 <교실 속 세계일주>
 const board = document.querySelector('#board');
 const rollButton = document.querySelector('#roll-button');
 const rollBtnText = document.querySelector('#roll-btn-text');
