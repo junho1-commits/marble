@@ -917,39 +917,6 @@ function endTurn() {
   }
 }
 
-// 착륙 처리
-function resolveLanding(playerIndex) {
-  if (isGameFinished) return;
-  const player = gamePlayers[playerIndex];
-  const spaceIndex = player.position;
-  const space = spaces[spaceIndex];
-  const state = propertyState[spaceIndex];
-
-  updatePlayerRow(playerIndex);
-
-  // 1. 특수칸 착륙
-  if (space.isSpecial) {
-    activeQuizSpace = spaceIndex;
-
-    if (space.type === 'special-start') {
-      player.money += salaryBonus;
-      sounds.playCoin();
-      updatePlayerRow(playerIndex);
-      addActivityLog(`<b>${player.name}</b>님이 출발지에 도착하여 <b>₩${salaryBonus.toLocaleString()}</b>을 획득했습니다.`);
-      endTurn();
-      return;
-    }
-
-    if (space.type === 'special-eco') {
-      const reward = 20000;
-      player.money += reward;
-      sounds.playCoin();
-      updatePlayerRow(playerIndex);
-      addActivityLog(`<b>${player.name}</b>님이 생태 쉼터에서 힐링하고 <b>₩${reward.toLocaleString()}</b>을 받았습니다.`);
-      endTurn();
-      return;
-    }
-
 // 토지 매각 모달 관리 (통행세 부족 시)
 function showSellModal(playerIndex, ownerIndex, toll, spaceName) {
   const player = gamePlayers[playerIndex];
