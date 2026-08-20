@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>모덕마블 | CITY LOOP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Jua&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="setup-modal" class="setup-modal">
+      <div class="setup-card">
+        <p class="setup-eyebrow">CITY LOOP BOARD GAME</p>
+        <h1>모덕마블</h1>
+        <p>게임에 참여할 인원과 이름을 정해주세요.</p>
+        <div class="setup-counts">
+          <button class="setup-count active" data-count="2">2인</button>
+          <button class="setup-count" data-count="3">3인</button>
+          <button class="setup-count" data-count="4">4인</button>
+        </div>
+        <div id="name-fields" class="name-fields"></div>
+        <button id="start-game" class="start-game">게임 시작하기 <span>↗</span></button>
+      </div>
+    </div>
+    <div id="quiz-modal" class="setup-modal hidden">
+      <div class="setup-card quiz-card">
+        <p class="setup-eyebrow">LANDMARK QUIZ</p>
+        <h1 id="quiz-title">퀴즈</h1>
+        <p id="quiz-question">문제를 풀고 이 나라의 땅을 획득하세요.</p>
+        <div id="quiz-options" class="quiz-options"></div>
+        <p id="quiz-result" class="quiz-result"></p>
+        <div id="purchase-actions" class="purchase-actions hidden">
+          <p id="purchase-question">이 땅을 구매하시겠습니까?</p>
+          <button id="buy-property">구매하기</button>
+          <button id="skip-property">구매하지 않기</button>
+        </div>
+      </div>
+    </div>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand"><span class="brand-mark">✦</span><span>CITY LOOP</span></div>
+        <div class="room-status"><span class="status-dot"></span> PRIVATE ROOM <span class="room-code">A7K-39F</span></div>
+        <button class="icon-button" aria-label="설정">☼</button>
+      </header>
+
+      <section class="game-layout">
+        <div class="board-section">
+          <div class="section-kicker">01 / MAIN BOARD</div>
+          <div class="board-frame">
+            <div id="board" class="board" aria-label="32칸 보드게임판"></div>
+            <div class="board-center">
+              <div class="game-title">모덕마블</div>
+              <div class="city-loop-label">CITY <strong>LOOP</strong></div>
+              <p class="center-subtitle">문제를 풀고 땅을 차지하세요</p>
+              <div class="center-dice-row"><div class="dice-row"><div class="die-scene"><div id="die-one" class="die"><i class="die-face front">2</i><i class="die-face back">5</i><i class="die-face right">3</i><i class="die-face left">4</i><i class="die-face top">6</i><i class="die-face bottom">1</i></div></div><div class="die-scene"><div id="die-two" class="die"><i class="die-face front">4</i><i class="die-face back">3</i><i class="die-face right">6</i><i class="die-face left">1</i><i class="die-face top">2</i><i class="die-face bottom">5</i></div></div><span class="sum">= <strong id="roll-sum">6</strong></span></div><button id="roll-button" class="roll-button"><span>주사위 굴리기</span><span class="button-arrow">↗</span></button></div>
+              <p id="center-message" class="center-message">게임을 시작해보세요!</p>
+            </div>
+          </div>
+          <div class="board-caption"><span>ROUND <strong id="round-number">01</strong></span><span>TIME <strong id="timer">03:42</strong></span><span class="legend"><i class="legend-dot player-one"></i> YOU <i class="legend-dot player-two"></i> MAYA</span></div>
+        </div>
+
+        <aside class="sidebar">
+          <div class="turn-panel">
+            <div class="section-kicker">CURRENT TURN</div>
+            <div class="turn-heading"><span class="avatar you">Y</span><div><span class="muted">YOUR TURN</span><h1>행운을 굴려요.</h1></div></div>
+          </div>
+
+          <div class="players-panel">
+            <div class="section-kicker">PLAYERS <span>02 / 04</span></div>
+            <div class="player-row active" data-player-row="0"><span class="avatar you">1</span><div class="player-info"><strong class="player-name">플레이어 1</strong><span>현재 위치</span></div><strong class="money">₩200,000</strong></div>
+            <div class="player-row" data-player-row="1"><span class="avatar maya">2</span><div class="player-info"><strong class="player-name">플레이어 2</strong><span>현재 위치</span></div><strong class="money">₩200,000</strong></div>
+            <div class="player-row extra-player" data-player-row="2"><span class="avatar player-three">3</span><div class="player-info"><strong class="player-name">플레이어 3</strong><span>현재 위치</span></div><strong class="money">₩200,000</strong></div>
+            <div class="player-row extra-player" data-player-row="3"><span class="avatar player-four">4</span><div class="player-info"><strong class="player-name">플레이어 4</strong><span>현재 위치</span></div><strong class="money">₩200,000</strong></div>
+          </div>
+
+          <div class="log-panel"><div class="section-kicker">ACTIVITY LOG</div><p><span>03:41</span> You rolled <b>2 + 4</b></p><p><span>03:36</span> Maya arrived at <b>Old Town</b></p><p><span>03:28</span> You collected <b>$120</b></p></div>
+        </aside>
+      </section>
+    </main>
+    <script src="script.js"></script>
+  </body>
+</html>
