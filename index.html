@@ -104,8 +104,15 @@
 
     <main class="app-shell">
       <header class="topbar">
-        <div class="brand"><span class="brand-mark">✦</span><span>모덕마블</span></div>
-        <div class="room-status"><span class="status-dot"></span> 6학년 사회과 <span class="room-code">세계의 자연환경과 다양한 생활 모습</span></div>
+        <div class="brand">
+          <span class="brand-mark">✦</span>
+          <span class="brand-title">모덕마블</span>
+          <span class="room-code" id="target-rule-display">목표: 10라운드</span>
+        </div>
+        <div class="topbar-status">
+          <span id="round-caption-box" class="status-pill">ROUND <strong id="round-number">01</strong>/<span id="max-round-text">10</span></span>
+          <span class="status-pill">TIME <strong id="timer">00:00</strong></span>
+        </div>
         <div class="topbar-controls">
           <button id="sound-toggle" class="sound-toggle-btn" aria-label="효과음 토글">🔊 소리 ON</button>
         </div>
@@ -113,10 +120,6 @@
 
       <section class="game-layout">
         <div class="board-section">
-          <div class="section-kicker">
-            <span>01 / MAIN BOARD (타일 클릭 시 정보 확인)</span>
-            <span id="target-rule-display">목표: 10라운드</span>
-          </div>
           <div class="board-frame">
             <div id="board" class="board" aria-label="32칸 보드게임판"></div>
             <div class="board-center">
@@ -150,76 +153,134 @@
               </div>
             </div>
           </div>
-          <div class="board-caption">
-            <span id="round-caption-box">ROUND <strong id="round-number">01</strong> / <span id="max-round-text">10</span></span>
-            <span>TIME <strong id="timer">00:00</strong></span>
-            <span class="legend" id="board-legend"></span>
-          </div>
         </div>
 
         <aside class="sidebar">
-          <div class="turn-panel">
-            <div class="section-kicker">CURRENT TURN</div>
-            <div class="turn-heading">
-              <span class="avatar you" id="current-turn-avatar">1</span>
-              <div>
-                <span class="muted" id="current-turn-label">PLAYER 1 TURN</span>
-                <h1 id="current-turn-name">플레이어 1</h1>
-              </div>
-            </div>
-          </div>
-
           <div class="players-panel">
-            <div class="section-kicker">PLAYERS <span id="player-count-num">02 / 04</span></div>
-            <div class="player-row active" data-player-row="0">
-              <span class="avatar you">1</span>
-              <div class="player-info">
-                <strong class="player-name">플레이어 1</strong>
-                <span class="player-location">출발지</span>
-              </div>
-              <div class="player-assets">
-                <strong class="money">₩200,000</strong>
-                <span class="asset-total">총 ₩200,000</span>
-              </div>
+            <div class="sidebar-header">
+              <h2>탐험가 현황</h2>
+              <span id="player-count-num" class="player-count-badge">2명 참여 중</span>
             </div>
-            <div class="player-row" data-player-row="1">
-              <span class="avatar maya">2</span>
-              <div class="player-info">
-                <strong class="player-name">플레이어 2</strong>
-                <span class="player-location">출발지</span>
-              </div>
-              <div class="player-assets">
-                <strong class="money">₩200,000</strong>
-                <span class="asset-total">총 ₩200,000</span>
-              </div>
-            </div>
-            <div class="player-row extra-player" data-player-row="2">
-              <span class="avatar player-three">3</span>
-              <div class="player-info">
-                <strong class="player-name">플레이어 3</strong>
-                <span class="player-location">출발지</span>
-              </div>
-              <div class="player-assets">
-                <strong class="money">₩200,000</strong>
-                <span class="asset-total">총 ₩200,000</span>
-              </div>
-            </div>
-            <div class="player-row extra-player" data-player-row="3">
-              <span class="avatar player-four">4</span>
-              <div class="player-info">
-                <strong class="player-name">플레이어 4</strong>
-                <span class="player-location">출발지</span>
-              </div>
-              <div class="player-assets">
-                <strong class="money">₩200,000</strong>
-                <span class="asset-total">총 ₩200,000</span>
-              </div>
-            </div>
-          </div>
 
-          <div class="log-panel" id="log-panel">
-            <div class="section-kicker">ACTIVITY LOG</div>
-            <div id="log-list"></div>
+            <!-- 플레이어 1 -->
+            <div class="player-card active" data-player-card="0">
+              <div class="player-card-top">
+                <span class="avatar p-0">1</span>
+                <div class="player-main-info">
+                  <div class="player-name-row">
+                    <strong class="player-name">플레이어 1</strong>
+                    <span class="turn-tag">현재 차례 🚩</span>
+                  </div>
+                  <span class="player-location">위치: 출발지</span>
+                </div>
+              </div>
+              <div class="player-wealth-box">
+                <div class="wealth-item">
+                  <span class="wealth-lbl">보유 현금</span>
+                  <strong class="money">₩200,000</strong>
+                </div>
+                <div class="wealth-item">
+                  <span class="wealth-lbl">총자산</span>
+                  <strong class="asset-total">₩200,000</strong>
+                </div>
+              </div>
+              <div class="player-lands-section">
+                <div class="lands-header">소유한 땅 (<span class="lands-count">0</span>곳)</div>
+                <div class="lands-list">
+                  <span class="no-lands">아직 소유한 땅이 없습니다.</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 플레이어 2 -->
+            <div class="player-card" data-player-card="1">
+              <div class="player-card-top">
+                <span class="avatar p-1">2</span>
+                <div class="player-main-info">
+                  <div class="player-name-row">
+                    <strong class="player-name">플레이어 2</strong>
+                    <span class="turn-tag">현재 차례 🚩</span>
+                  </div>
+                  <span class="player-location">위치: 출발지</span>
+                </div>
+              </div>
+              <div class="player-wealth-box">
+                <div class="wealth-item">
+                  <span class="wealth-lbl">보유 현금</span>
+                  <strong class="money">₩200,000</strong>
+                </div>
+                <div class="wealth-item">
+                  <span class="wealth-lbl">총자산</span>
+                  <strong class="asset-total">₩200,000</strong>
+                </div>
+              </div>
+              <div class="player-lands-section">
+                <div class="lands-header">소유한 땅 (<span class="lands-count">0</span>곳)</div>
+                <div class="lands-list">
+                  <span class="no-lands">아직 소유한 땅이 없습니다.</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 플레이어 3 -->
+            <div class="player-card extra-player" data-player-card="2">
+              <div class="player-card-top">
+                <span class="avatar p-2">3</span>
+                <div class="player-main-info">
+                  <div class="player-name-row">
+                    <strong class="player-name">플레이어 3</strong>
+                    <span class="turn-tag">현재 차례 🚩</span>
+                  </div>
+                  <span class="player-location">위치: 출발지</span>
+                </div>
+              </div>
+              <div class="player-wealth-box">
+                <div class="wealth-item">
+                  <span class="wealth-lbl">보유 현금</span>
+                  <strong class="money">₩200,000</strong>
+                </div>
+                <div class="wealth-item">
+                  <span class="wealth-lbl">총자산</span>
+                  <strong class="asset-total">₩200,000</strong>
+                </div>
+              </div>
+              <div class="player-lands-section">
+                <div class="lands-header">소유한 땅 (<span class="lands-count">0</span>곳)</div>
+                <div class="lands-list">
+                  <span class="no-lands">아직 소유한 땅이 없습니다.</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 플레이어 4 -->
+            <div class="player-card extra-player" data-player-card="3">
+              <div class="player-card-top">
+                <span class="avatar p-3">4</span>
+                <div class="player-main-info">
+                  <div class="player-name-row">
+                    <strong class="player-name">플레이어 4</strong>
+                    <span class="turn-tag">현재 차례 🚩</span>
+                  </div>
+                  <span class="player-location">위치: 출발지</span>
+                </div>
+              </div>
+              <div class="player-wealth-box">
+                <div class="wealth-item">
+                  <span class="wealth-lbl">보유 현금</span>
+                  <strong class="money">₩200,000</strong>
+                </div>
+                <div class="wealth-item">
+                  <span class="wealth-lbl">총자산</span>
+                  <strong class="asset-total">₩200,000</strong>
+                </div>
+              </div>
+              <div class="player-lands-section">
+                <div class="lands-header">소유한 땅 (<span class="lands-count">0</span>곳)</div>
+                <div class="lands-list">
+                  <span class="no-lands">아직 소유한 땅이 없습니다.</span>
+                </div>
+              </div>
+            </div>
           </div>
         </aside>
       </section>

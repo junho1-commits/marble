@@ -9,7 +9,7 @@ const roundNumber = document.querySelector('#round-number');
 const maxRoundText = document.querySelector('#max-round-text');
 const targetRuleDisplay = document.querySelector('#target-rule-display');
 const roundCaptionBox = document.querySelector('#round-caption-box');
-const playerRows = document.querySelectorAll('.player-row[data-player-row]');
+const playerCards = document.querySelectorAll('.player-card[data-player-card]');
 const playerCountNum = document.querySelector('#player-count-num');
 const dieOneFace = dieOne.querySelector('.front');
 const setupModal = document.querySelector('#setup-modal');
@@ -31,13 +31,8 @@ const buyProperty = document.querySelector('#buy-property');
 const skipProperty = document.querySelector('#skip-property');
 const specialActions = document.querySelector('#special-actions');
 const claimSpecial = document.querySelector('#claim-special');
-const currentTurnAvatar = document.querySelector('#current-turn-avatar');
-const currentTurnLabel = document.querySelector('#current-turn-label');
-const currentTurnName = document.querySelector('#current-turn-name');
 const centerTurnDot = document.querySelector('#center-turn-dot');
 const centerTurnText = document.querySelector('#center-turn-text');
-const logList = document.querySelector('#log-list');
-const boardLegend = document.querySelector('#board-legend');
 const soundToggleBtn = document.querySelector('#sound-toggle');
 const closeInfoBtn = document.querySelector('#close-info');
 const restartGameBtn = document.querySelector('#restart-game');
@@ -678,11 +673,6 @@ function updateCurrentTurnUI() {
   if (!gamePlayers.length) return;
   const current = gamePlayers[currentPlayerIndex];
 
-  currentTurnAvatar.className = `avatar p-${currentPlayerIndex}`;
-  currentTurnAvatar.textContent = String(currentPlayerIndex + 1);
-  currentTurnLabel.textContent = `${current.name} 차례`;
-  currentTurnName.textContent = current.name;
-
   // 보드 정중앙 턴 안내 갱신
   centerTurnDot.className = `center-turn-dot p-${currentPlayerIndex}`;
   centerTurnText.innerHTML = `<strong>${current.name}</strong> 님의 차례입니다`;
@@ -696,8 +686,8 @@ function updateCurrentTurnUI() {
     rollButton.disabled = isMoving || isGameFinished;
   }
 
-  playerRows.forEach((row, index) => {
-    row.classList.toggle('active', index === currentPlayerIndex);
+  playerCards.forEach((card, index) => {
+    card.classList.toggle('active', index === currentPlayerIndex);
   });
 
   // AI 플레이어 자동 턴 진행
@@ -711,11 +701,8 @@ function updateCurrentTurnUI() {
 }
 
 function addActivityLog(text) {
-  const p = document.createElement('p');
-  const now = new Date();
-  const timeStr = `${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-  p.innerHTML = `<span>${timeStr}</span> ${text}`;
-  logList.prepend(p);
+  // Activity Log 패널은 크롬북 화면 최적화를 위해 제거되었습니다.
+  console.log('[LOG]', text.replace(/<[^>]+>/g, ''));
 }
 
 // 총자산 계산 (현금 + 토지/건물 가치)
@@ -732,14 +719,42 @@ function calculateTotalAssets(playerIndex) {
   return player.money + propertyVal;
 }
 
+// 플레이어 카드 및 소유한 땅 목록 업데이트
 function updatePlayerRow(index) {
   const player = gamePlayers[index];
-  const row = playerRows[index];
-  if (!row || !player) return;
-  row.querySelector('.money').textContent = `₩${player.money.toLocaleString()}`;
-  row.querySelector('.player-location').textContent = spaces[player.position].name;
+  const card = playerCards[index];
+  if (!card || !player) return;
+
+  card.querySelector('.money').textContent = `₩${player.money.toLocaleString()}`;
+  card.querySelector('.player-location').textContent = `위치: ${spaces[player.position].name}`;
   const totalAssets = calculateTotalAssets(index);
-  row.querySelector('.asset-total').textContent = `총 ₩${totalAssets.toLocaleString()}`;
+  card.querySelector('.asset-total').textContent = `₩${totalAssets.toLocaleString()}`;
+
+  // 소유한 땅 목록 갱신
+  const ownedLands = [];
+  propertyState.forEach((st, sIdx) => {
+    if (st.owner === index) {
+      ownedLands.push({
+        space: spaces[sIdx],
+        buildings: st.buildings
+      });
+    }
+  });
+
+  const landsCountEl = card.querySelector('.lands-count');
+  const landsListEl = card.querySelector('.lands-list');
+  if (landsCountEl) landsCountEl.textContent = String(ownedLands.length);
+
+  if (landsListEl) {
+    if (ownedLands.length === 0) {
+      landsListEl.innerHTML = '<span class="no-lands">아직 소유한 땅이 없습니다.</span>';
+    } else {
+      landsListEl.innerHTML = ownedLands.map(l => {
+        const buildClass = l.buildings > 0 ? ` building-${l.buildings}` : '';
+        return `<span class="land-pill${buildClass}">${l.space.symbol} ${l.space.name}</span>`;
+      }).join('');
+    }
+  }
 }
 
 function updatePropertyTile(spaceIndex) {
@@ -776,35 +791,33 @@ function createPlayers(playerConfigs) {
     };
   });
 
-  playerRows.forEach((row, index) => {
+  playerCards.forEach((card, index) => {
     const visible = index < gamePlayers.length;
-    row.style.display = visible ? 'flex' : 'none';
+    card.style.display = visible ? 'flex' : 'none';
     if (visible) {
       const p = gamePlayers[index];
-      row.querySelector('.player-name').textContent = p.name + (p.isAI ? ' (AI)' : '');
-      row.querySelector('.money').textContent = `₩${startingMoney.toLocaleString()}`;
-      row.querySelector('.player-location').textContent = '출발지';
-      row.querySelector('.asset-total').textContent = `총 ₩${startingMoney.toLocaleString()}`;
-      const av = row.querySelector('.avatar');
+      card.querySelector('.player-name').textContent = p.name + (p.isAI ? ' (AI)' : '');
+      const av = card.querySelector('.avatar');
       av.className = `avatar p-${index}`;
       av.textContent = String(index + 1);
+      updatePlayerRow(index);
     }
   });
 
-  playerCountNum.textContent = `${String(gamePlayers.length).padStart(2, '0')} / 04`;
-  boardLegend.innerHTML = gamePlayers.map((p, i) => `<i class="legend-dot p-${i}"></i> ${p.name}`).join(' ');
+  if (playerCountNum) {
+    playerCountNum.textContent = `${gamePlayers.length}명 참여 중`;
+  }
 
   if (gameMode === 'round') {
-    maxRoundText.textContent = String(targetMaxRounds);
-    targetRuleDisplay.textContent = `목표: ${targetMaxRounds}라운드 완주`;
-    roundCaptionBox.style.display = 'inline';
+    if (maxRoundText) maxRoundText.textContent = String(targetMaxRounds);
+    if (targetRuleDisplay) targetRuleDisplay.textContent = `목표: ${targetMaxRounds}라운드`;
+    if (roundCaptionBox) roundCaptionBox.style.display = 'inline-block';
   } else {
-    targetRuleDisplay.textContent = `목표: ${targetTimeMinutes}분 타임어택`;
-    roundCaptionBox.style.display = 'none';
+    if (targetRuleDisplay) targetRuleDisplay.textContent = `목표: ${targetTimeMinutes}분 타임어택`;
+    if (roundCaptionBox) roundCaptionBox.style.display = 'none';
   }
 
   updateCurrentTurnUI();
-  addActivityLog(`<b>${gamePlayers.map(p => p.name).join(', ')}</b>님이 게임을 시작했습니다! (${gameMode === 'round' ? targetMaxRounds + 'R' : targetTimeMinutes + '분'})`);
 }
 
 // 최종 게임 종료 및 시상대 팝업
