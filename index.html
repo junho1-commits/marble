@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Jua&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260820_06" />
+    <link rel="stylesheet" href="style.css?v=20260820_09" />
   </head>
   <body>
     <!-- 게임 설정 모달 -->
@@ -128,21 +128,6 @@
     </div>
 
     <main class="app-shell">
-      <header class="topbar">
-        <div class="brand">
-          <span class="brand-mark">✦</span>
-          <span class="brand-title">교실 속 세계일주</span>
-          <span class="room-code" id="target-rule-display">목표: 10라운드</span>
-        </div>
-        <div class="topbar-status">
-          <span id="round-caption-box" class="status-pill">ROUND <strong id="round-number">01</strong>/<span id="max-round-text">10</span></span>
-          <span class="status-pill">TIME <strong id="timer">00:00</strong></span>
-        </div>
-        <div class="topbar-controls">
-          <button id="sound-toggle" class="sound-toggle-btn" aria-label="효과음 토글">🔊 소리 ON</button>
-        </div>
-      </header>
-
       <section class="game-layout">
         <div class="board-section">
           <div class="board-frame">
@@ -181,6 +166,22 @@
         </div>
 
         <aside class="sidebar">
+          <!-- 우측 상단으로 이동한 게임 컨트롤 패널 -->
+          <div class="game-control-card">
+            <div class="control-card-top">
+              <div class="brand">
+                <span class="brand-mark">✦</span>
+                <span class="brand-title">교실 속 세계일주</span>
+              </div>
+              <button id="sound-toggle" class="sound-toggle-btn" aria-label="효과음 토글">🔊 소리 ON</button>
+            </div>
+            <div class="control-card-status">
+              <span class="room-code" id="target-rule-display">목표: 10라운드</span>
+              <span id="round-caption-box" class="status-pill">ROUND <strong id="round-number">01</strong>/<span id="max-round-text">10</span></span>
+              <span class="status-pill">TIME <strong id="timer">00:00</strong></span>
+            </div>
+          </div>
+
           <div class="players-panel">
             <div class="sidebar-header">
               <h2>탐험가 현황</h2>
@@ -306,15 +307,15 @@
                 </div>
               </div>
             </div>
-
-            <!-- 제작자 크레딧 -->
-            <footer class="app-credit">
-              <span>제작 : 모덕초 조준호</span>
-            </footer>
           </div>
         </aside>
       </section>
+
+      <!-- 화면 오른쪽 최하단 고정 제작자 크레딧 -->
+      <footer class="app-credit">
+        <span>제작 : 모덕초 조준호</span>
+      </footer>
     </main>
-    <script src="script.js?v=20260820_06"></script>
+    <script src="script.js?v=20260820_09"></script>
   </body>
 </html>

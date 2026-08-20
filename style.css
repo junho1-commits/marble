@@ -11,51 +11,55 @@
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Space Grotesk", sans-serif; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Space Grotesk", sans-serif; overflow-x: hidden; }
 button { font: inherit; }
 
 /* 모달 기본 스타일 */
-.setup-modal { position: fixed; z-index: 50; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(32,35,31,.65); backdrop-filter: blur(2px); }
+.setup-modal { position: fixed; z-index: 50; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(32,35,31,.72); backdrop-filter: blur(3px); }
 .setup-modal.hidden, .hidden { display: none !important; }
-.setup-card { width: min(500px, 100%); max-height: 90vh; overflow-y: auto; padding: 26px; border: 2px solid var(--ink); background: var(--paper); box-shadow: 10px 10px 0 var(--orange); border-radius: 6px; }
-.setup-card h1 { margin: 6px 0 8px; color: var(--orange); font: 34px "Jua", sans-serif; text-shadow: 2px 2px 0 var(--ink); }
+.setup-card { width: min(520px, 100%); max-height: 92vh; overflow-y: auto; padding: 28px; border: 2.5px solid var(--ink); background: var(--paper); box-shadow: 10px 10px 0 var(--orange); border-radius: 8px; }
+.setup-card h1 { margin: 6px 0 8px; color: var(--orange); font: 36px "Jua", sans-serif; text-shadow: 2px 2px 0 var(--ink); }
 .setup-card p { margin: 0 0 14px; color: #5f5c53; font-size: 14px; line-height: 1.45; }
-.setup-eyebrow { color: var(--ink) !important; font: 11px "DM Mono", monospace; letter-spacing: .12em; font-weight: bold; }
-.setup-section-label { font: 12px "DM Mono", monospace; color: var(--ink); margin-top: 14px; margin-bottom: 6px; font-weight: 600; }
+.setup-eyebrow { color: var(--ink) !important; font: 12px "DM Mono", monospace; letter-spacing: .12em; font-weight: bold; }
+.setup-section-label { font: 13px "DM Mono", monospace; color: var(--ink); margin-top: 14px; margin-bottom: 6px; font-weight: 700; }
 .setup-counts { display: flex; gap: 8px; margin-bottom: 12px; }
-.setup-count, .setup-round { flex: 1; padding: 10px 6px; border: 1px solid var(--ink); background: var(--white); cursor: pointer; font: 12px "DM Mono", monospace; text-align: center; transition: background .15s; border-radius: 3px; }
+.setup-count, .setup-round { flex: 1; padding: 10px 6px; border: 1.5px solid var(--ink); background: var(--white); cursor: pointer; font: 13px "DM Mono", monospace; text-align: center; transition: background .15s; border-radius: 4px; font-weight: 600; }
 .setup-count.active, .setup-round.active { background: var(--orange); color: var(--white); font-weight: bold; border-color: var(--ink); }
 .name-fields { display: grid; gap: 8px; margin-bottom: 18px; }
-.name-field { width: 100%; padding: 10px 12px; border: 1px solid var(--line); background: var(--white); color: var(--ink); font: 14px "Space Grotesk", sans-serif; border-radius: 3px; }
-.start-game { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 14px 18px; border: 1.5px solid var(--ink); background: var(--ink); color: var(--white); cursor: pointer; font: 14px "DM Mono", monospace; font-weight: 700; transition: background .2s; border-radius: 4px; }
+.name-field { width: 100%; padding: 11px 13px; border: 1.5px solid var(--line); background: var(--white); color: var(--ink); font: 15px "Space Grotesk", sans-serif; border-radius: 4px; }
+.start-game { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 14px 18px; border: 2px solid var(--ink); background: var(--ink); color: var(--white); cursor: pointer; font: 15px "DM Mono", monospace; font-weight: 700; transition: background .2s; border-radius: 5px; }
 .start-game:hover:not(:disabled) { background: var(--orange); }
 .start-game:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* 퀴즈 모달 (대형 화면 & 큼직한 폰트) */
+/* ============================================================
+   초대형 퀴즈 모달 (크롬북 최적화 대형 폰트)
+   ============================================================ */
 .quiz-card {
-  width: min(740px, 94vw) !important;
-  padding: 32px 34px !important;
-  box-shadow: 12px 12px 0 var(--ink) !important;
+  width: min(920px, 96vw) !important;
+  max-height: 94vh !important;
+  padding: 34px 38px !important;
+  box-shadow: 14px 14px 0 var(--ink) !important;
+  border-radius: 10px !important;
 }
 
 .ai-quiz-banner {
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: #2b3a4a;
+  gap: 12px;
+  background: #202c39;
   color: #fff;
-  padding: 8px 14px;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: bold;
-  margin-bottom: 12px;
+  padding: 10px 18px;
+  border-radius: 24px;
+  font-size: 16px;
+  font-weight: 800;
+  margin-bottom: 14px;
   font-family: "Space Grotesk", sans-serif;
   animation: pulse-border 1.2s infinite alternate;
 }
 
 .ai-pulse-dot {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   background: #4ade80;
   border-radius: 50%;
   animation: pulse-dot 1s infinite alternate;
@@ -67,89 +71,89 @@ button { font: inherit; }
 }
 
 .quiz-card h1 {
-  font-size: clamp(28px, 3.5vw, 42px) !important;
-  margin-bottom: 12px !important;
+  font-size: clamp(30px, 3.8vw, 46px) !important;
+  margin-bottom: 14px !important;
 }
 
 .quiz-question-text {
-  font-size: clamp(17px, 2vw, 22px) !important;
-  font-weight: 700 !important;
+  font-size: clamp(20px, 2.5vw, 29px) !important;
+  font-weight: 800 !important;
   color: var(--ink) !important;
   line-height: 1.55 !important;
   background: var(--white);
-  padding: 16px 18px;
-  border: 2px solid var(--ink);
-  border-radius: 6px;
-  box-shadow: 3px 3px 0 var(--ink);
-  margin-bottom: 18px !important;
+  padding: 20px 24px !important;
+  border: 2.5px solid var(--ink);
+  border-radius: 8px;
+  box-shadow: 4px 4px 0 var(--ink);
+  margin-bottom: 20px !important;
 }
 
-.quiz-options { display: grid; gap: 10px; margin-top: 14px; }
+.quiz-options { display: grid; gap: 12px; margin-top: 14px; }
 .quiz-options button {
-  padding: 14px 18px;
-  border: 2px solid var(--ink);
+  padding: 18px 22px;
+  border: 2.5px solid var(--ink);
   background: var(--white);
   cursor: pointer;
   text-align: left;
-  font-size: clamp(15px, 1.8vw, 19px);
-  font-weight: 700;
-  border-radius: 6px;
-  box-shadow: 2px 2px 0 var(--ink);
+  font-size: clamp(17px, 2.1vw, 23px);
+  font-weight: 800;
+  border-radius: 8px;
+  box-shadow: 3px 3px 0 var(--ink);
   transition: all .15s;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .quiz-options button:hover:not(:disabled) {
   background: var(--yellow);
-  transform: translateX(4px);
+  transform: translateX(5px);
 }
 
 .quiz-options button.correct {
-  background: #38846c !important;
+  background: #2e7d5e !important;
   color: white !important;
-  border-color: #1f5746 !important;
-  font-weight: 800 !important;
+  border-color: #174b37 !important;
+  font-weight: 900 !important;
 }
 
 .quiz-options button.incorrect {
-  background: #ef4343 !important;
+  background: #dc2626 !important;
   color: white !important;
-  border-color: #991b1b !important;
-  font-weight: 800 !important;
+  border-color: #881337 !important;
+  font-weight: 900 !important;
 }
 
 .quiz-result {
-  min-height: 24px;
-  margin-top: 16px !important;
+  min-height: 26px;
+  margin-top: 18px !important;
   color: var(--orange) !important;
-  font-weight: 800;
-  font-size: clamp(16px, 1.9vw, 20px);
+  font-weight: 900;
+  font-size: clamp(18px, 2.2vw, 24px);
 }
 
 .quiz-explanation {
-  margin-top: 14px;
-  padding: 16px;
-  border: 2px dashed var(--ink);
-  background: #fffcf2;
-  color: #2b2923;
-  font-size: clamp(14px, 1.6vw, 17px);
-  line-height: 1.55;
-  border-radius: 6px;
-  font-weight: 500;
+  margin-top: 16px;
+  padding: 18px 20px;
+  border: 2.5px dashed var(--ink);
+  background: #fffcf0;
+  color: #1f2937;
+  font-size: clamp(16px, 1.8vw, 20px);
+  line-height: 1.6;
+  border-radius: 8px;
+  font-weight: 600;
 }
 
-.purchase-actions { margin-top: 18px; }
-.purchase-actions p { margin-bottom: 12px; color: var(--ink); font-weight: 800; font-size: 16px; }
+.purchase-actions { margin-top: 20px; }
+.purchase-actions p { margin-bottom: 12px; color: var(--ink); font-weight: 800; font-size: 18px; }
 .purchase-actions button {
   width: 100%;
-  margin-top: 8px;
-  padding: 14px;
-  border: 2px solid var(--ink);
+  margin-top: 10px;
+  padding: 16px;
+  border: 2.5px solid var(--ink);
   background: var(--white);
   cursor: pointer;
   font-weight: 800;
-  font-size: 16px;
-  border-radius: 4px;
+  font-size: 18px;
+  border-radius: 6px;
 }
 
 .purchase-actions button:first-of-type { background: var(--orange); color: var(--white); }
@@ -161,19 +165,19 @@ button { font: inherit; }
    토지 매각 모달 (통행세 부족 시)
    ============================================================ */
 .sell-card {
-  width: min(650px, 94vw) !important;
-  padding: 28px !important;
+  width: min(720px, 95vw) !important;
+  padding: 30px !important;
   border: 3px solid #ef4343 !important;
-  box-shadow: 10px 10px 0 #ef4343 !important;
+  box-shadow: 12px 12px 0 #ef4343 !important;
 }
 
 .sell-status-box {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
+  gap: 10px;
   background: #fff5f5;
-  border: 1.5px solid #ef4343;
-  padding: 10px 12px;
+  border: 2px solid #ef4343;
+  padding: 12px 14px;
   border-radius: 6px;
   margin-top: 12px;
 }
@@ -184,27 +188,28 @@ button { font: inherit; }
 }
 
 .sell-stat .lbl {
-  font-size: 11px;
+  font-size: 12px;
   color: #777;
   font-family: "DM Mono", monospace;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .sell-stat .val {
-  font-size: 16px;
+  font-size: 18px;
   font-family: "DM Mono", monospace;
-  font-weight: 800;
+  font-weight: 900;
   color: var(--ink);
 }
 
 .sell-stat .val.red { color: #dc2626; }
 .sell-stat .val.orange { color: #ea580c; }
+.sell-stat .val.green { color: #16a34a; }
 
 .sell-lands-list {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
-  max-height: 220px;
+  max-height: 240px;
   overflow-y: auto;
   margin: 12px 0 16px;
   padding: 4px 2px;
@@ -227,25 +232,25 @@ button { font: inherit; }
 }
 
 .sell-land-name {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 800;
   color: var(--ink);
 }
 
 .sell-land-val {
-  font-size: 12px;
+  font-size: 13px;
   font-family: "DM Mono", monospace;
   color: #16a34a;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .sell-btn {
-  padding: 6px 12px;
+  padding: 8px 14px;
   background: #ef4343;
   color: white;
-  border: 1px solid var(--ink);
-  border-radius: 3px;
-  font-size: 12px;
+  border: 1.5px solid var(--ink);
+  border-radius: 4px;
+  font-size: 13px;
   font-weight: 800;
   cursor: pointer;
   transition: transform .1s;
@@ -264,167 +269,81 @@ button { font: inherit; }
 
 .bankrupt-btn {
   width: 100%;
-  padding: 12px;
+  padding: 14px;
   background: #4b5563;
   color: white;
-  border: 1px solid var(--ink);
+  border: 1.5px solid var(--ink);
   border-radius: 4px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
 .bankrupt-btn:hover { background: #1f2937; }
 
 /* 타일 정보 모달 */
-.info-photo { width: 100%; height: 160px; background-size: cover; background-position: center; border: 1px solid var(--ink); margin-bottom: 12px; border-radius: 2px; }
-.info-desc { font-size: 13px; line-height: 1.5; color: #333; margin-bottom: 14px; background: var(--white); padding: 10px; border: 1px solid var(--line); }
+.info-photo { width: 100%; height: 170px; background-size: cover; background-position: center; border: 1.5px solid var(--ink); margin-bottom: 12px; border-radius: 4px; }
+.info-desc { font-size: 14px; line-height: 1.55; color: #333; margin-bottom: 14px; background: var(--white); padding: 12px; border: 1px solid var(--line); border-radius: 4px; }
 .info-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-.info-stat-item { background: var(--white); border: 1px solid var(--ink); padding: 8px 6px; text-align: center; font-size: 11px; }
-.info-stat-item span { display: block; color: #777; font-size: 10px; margin-bottom: 4px; }
-.info-stat-item strong { color: var(--ink); font-size: 13px; }
+.info-stat-item { background: var(--white); border: 1.5px solid var(--ink); padding: 8px 6px; text-align: center; font-size: 12px; border-radius: 4px; }
+.info-stat-item span { display: block; color: #777; font-size: 11px; margin-bottom: 4px; }
+.info-stat-item strong { color: var(--ink); font-size: 14px; }
 
 /* 우승 결과 모달 */
 .victory-ranking { display: grid; gap: 8px; margin: 16px 0; }
-.victory-rank-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border: 1px solid var(--ink); background: var(--white); font-family: "Space Grotesk", sans-serif; }
-.victory-rank-row.rank-1 { background: #fff8dd; border: 2px solid #e09f18; font-weight: bold; }
-.victory-rank-badge { font-size: 20px; margin-right: 10px; }
-.victory-rank-name { flex: 1; text-align: left; font-size: 15px; }
-.victory-rank-val { font-weight: 700; color: var(--orange); font-family: "DM Mono", monospace; }
+.victory-rank-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border: 2px solid var(--ink); background: var(--white); font-family: "Space Grotesk", sans-serif; border-radius: 4px; }
+.victory-rank-row.rank-1 { background: #fff8dd; border: 2.5px solid #e09f18; font-weight: bold; }
+.victory-rank-badge { font-size: 22px; margin-right: 10px; }
+.victory-rank-name { flex: 1; text-align: left; font-size: 16px; }
+.victory-rank-val { font-weight: 800; color: var(--orange); font-family: "DM Mono", monospace; font-size: 17px; }
 
-/* 탑바 & 레이아웃 */
+/* ============================================================
+   메인 레이아웃: 보드판 97vh 극대화 & 우측 여백 정중앙 정렬
+   ============================================================ */
 .app-shell {
   max-width: 100vw;
-  min-height: 100vh;
+  height: 100vh;
   margin: 0 auto;
-  padding: 6px 14px 10px;
-  display: flex;
-  flex-direction: column;
-}
-
-.topbar {
+  padding: 4px 16px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  border-bottom: 2px solid var(--line);
-  padding: 4px 6px 8px;
-  font-family: "DM Mono", monospace;
-  font-size: 13px;
-  letter-spacing: .05em;
-  gap: 12px;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
-.brand {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  font-weight: 700;
-  font-size: 16px;
-}
-
-.brand-mark {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border: 1.5px solid var(--ink);
-  border-radius: 50%;
-  color: var(--orange);
-  font-size: 15px;
-}
-
-.brand-title {
-  font-family: "Jua", sans-serif;
-  font-size: 20px;
-  color: var(--orange);
-  text-shadow: 1px 1px 0 var(--ink);
-}
-
-.room-code {
-  margin-left: 8px;
-  padding: 3px 8px;
-  background: var(--white);
-  border: 1px solid var(--ink);
-  border-radius: 4px;
-  color: var(--ink);
-  font-size: 12px;
-  font-weight: bold;
-}
-
-.topbar-status {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.status-pill {
-  padding: 4px 10px;
-  background: var(--white);
-  border: 1.5px solid var(--ink);
-  border-radius: 14px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.status-pill strong {
-  color: var(--orange);
-  font-size: 15px;
-}
-
-.status-pill strong.time-warning {
-  color: #ef4343 !important;
-  animation: pulse-time .8s infinite alternate;
-}
-
-@keyframes pulse-time {
-  from { transform: scale(1); }
-  to { transform: scale(1.18); }
-}
-
-.sound-toggle-btn {
-  padding: 5px 12px;
-  border: 1.5px solid var(--ink);
-  background: var(--white);
-  cursor: pointer;
-  font: 12px "DM Mono", monospace;
-  font-weight: bold;
-  border-radius: 4px;
-  transition: all .15s;
-}
-
-.sound-toggle-btn:hover {
-  background: var(--yellow);
-}
-
-/* 2열 메인 레이아웃: 보드판(최대화) + 사이드바 */
+/* 플렉스 기반 2열 레이아웃: 보드판 + 우측 여백의 가운데 배치된 사이드바 */
 .game-layout {
-  display: grid;
-  grid-template-columns: minmax(auto, 1fr) 380px;
-  gap: 18px;
-  padding-top: 8px;
-  flex: 1;
-  align-items: center;
-}
-
-.board-section {
   display: flex;
   justify-content: center;
   align-items: center;
+  gap: clamp(16px, 2.5vw, 42px);
   width: 100%;
+  height: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.board-section {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   height: 100%;
 }
 
-/* 크롬북 화면에서 높이 88vh까지 꽉 차는 정사각형 대형 보드 */
+/* 크롬북 화면에서 세로 97vh까지 꽉 차는 정사각형 극대화 보드 */
 .board-frame {
   position: relative;
-  width: min(88vh, 100%);
-  max-width: 860px;
+  width: min(97vh, 100%);
+  height: min(97vh, 100%);
+  max-width: 960px;
+  max-height: 960px;
   aspect-ratio: 1;
-  padding: 2.2%;
+  padding: 1.5%;
   border: 3px solid var(--ink);
   background: #ebe5d8;
-  box-shadow: 6px 6px 0 #cfc7b8;
+  box-shadow: 4px 4px 0 #cfc7b8;
   border-radius: 6px;
+  margin: 0 auto;
 }
 
 .board {
@@ -437,7 +356,7 @@ button { font: inherit; }
   gap: 2px;
 }
 
-/* 타일 스타일 (시원한 폰트 & 선명도) */
+/* 타일 스타일 (시원한 폰트 & 가독성 극대화) */
 .tile {
   position: relative;
   display: flex;
@@ -490,7 +409,7 @@ button { font: inherit; }
   position: absolute;
   z-index: -1;
   inset: 0;
-  background: linear-gradient(180deg, rgba(0,0,0,.65) 0%, rgba(0,0,0,.2) 40%, rgba(0,0,0,.85) 100%);
+  background: linear-gradient(180deg, rgba(0,0,0,.68) 0%, rgba(0,0,0,.15) 38%, rgba(0,0,0,.88) 100%);
   content: "";
 }
 
@@ -498,26 +417,29 @@ button { font: inherit; }
 .tile.special-climate { background: linear-gradient(135deg, #38846c, #1f5746) !important; color: white !important; }
 .tile.special-landform { background: linear-gradient(135deg, #c7742d, #8f4d15) !important; color: white !important; }
 .tile.special-eco { background: linear-gradient(135deg, #3d8652, #215e33) !important; color: white !important; }
-.tile.special-tile .tile-name { font-size: clamp(10px, 1.25vw, 16px); color: #fff; text-shadow: 0 1px 4px #000; font-weight: 800; }
-.tile.special-tile .special-badge { position: absolute; top: 2px; right: 3px; font-size: 14px; }
+.tile.special-tile .tile-name { font-size: clamp(12.5px, 1.5vw, 19px); color: #fff; text-shadow: 0 1px 4px #000; font-weight: 900; }
+.tile.special-tile .special-badge { position: absolute; top: 2px; right: 3px; font-size: 16px; }
 
+/* 타일 상단 기후/지형 태그 (크고 선명하게) */
 .tile-category-tag {
-  font-size: clamp(6.5px, 0.75vw, 9.5px);
-  padding: 1px 4px;
-  background: rgba(0,0,0,0.75);
+  font-size: clamp(8.5px, 1.05vw, 13.5px);
+  padding: 2px 5px;
+  background: rgba(0,0,0,0.85);
   color: #fff;
-  border-radius: 2px;
+  border-radius: 3px;
   width: fit-content;
-  max-width: 95%;
+  max-width: 96%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 700;
-  line-height: 1.15;
+  font-weight: 800;
+  line-height: 1.2;
   margin-bottom: 1px;
   z-index: 2;
+  letter-spacing: -0.02em;
 }
 
+/* 타일 국가명 (대형 굵은 폰트) */
 .tile-name {
   position: relative;
   z-index: 3;
@@ -531,27 +453,27 @@ button { font: inherit; }
   text-align: center;
   white-space: nowrap;
   text-overflow: ellipsis;
-  font-size: clamp(10.5px, 1.35vw, 18px);
-  line-height: 1.15;
+  font-size: clamp(13.5px, 1.75vw, 23px);
+  line-height: 1.1;
   font-weight: 900;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.95), 0 0 6px rgba(0,0,0,0.8);
+  text-shadow: 0 2px 5px rgba(0,0,0,0.98), 0 0 7px rgba(0,0,0,0.9);
   pointer-events: none;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
 
-.tile-name.medium-name { font-size: clamp(9px, 1.1vw, 15px); }
-.tile-name.long-name { font-size: clamp(7.5px, 0.9vw, 12px); }
+.tile-name.medium-name { font-size: clamp(11.5px, 1.4vw, 18px); }
+.tile-name.long-name { font-size: clamp(9.5px, 1.15vw, 15px); }
 
 /* 소유자 배지 */
 .owner-badge {
   position: relative;
   z-index: 5;
   width: 100%;
-  padding: 1px 2px;
+  padding: 2px 2px;
   color: #fff;
-  font: 800 clamp(7px, 0.75vw, 10.5px) "Space Grotesk", sans-serif;
+  font: 900 clamp(9px, 1.05vw, 13px) "Space Grotesk", sans-serif;
   text-align: center;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.95);
   border-radius: 2px;
   line-height: 1.2;
   overflow: hidden;
@@ -559,13 +481,13 @@ button { font: inherit; }
   text-overflow: ellipsis;
 }
 
-.tile.owner-0 { box-shadow: inset 0 0 0 3px #ef6a43; }
+.tile.owner-0 { box-shadow: inset 0 0 0 3.5px #ef6a43; }
 .tile.owner-0 .owner-badge { background: #ef6a43; }
-.tile.owner-1 { box-shadow: inset 0 0 0 3px #3f798f; }
+.tile.owner-1 { box-shadow: inset 0 0 0 3.5px #3f798f; }
 .tile.owner-1 .owner-badge { background: #3f798f; }
-.tile.owner-2 { box-shadow: inset 0 0 0 3px #d6a500; }
+.tile.owner-2 { box-shadow: inset 0 0 0 3.5px #d6a500; }
 .tile.owner-2 .owner-badge { background: #b88e00; }
-.tile.owner-3 { box-shadow: inset 0 0 0 3px #4a9b70; }
+.tile.owner-3 { box-shadow: inset 0 0 0 3.5px #4a9b70; }
 .tile.owner-3 .owner-badge { background: #3d8652; }
 
 /* 타일 내 다중 말 배치 컨테이너 */
@@ -590,12 +512,12 @@ button { font: inherit; }
 .piece {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border: 2px solid var(--ink);
   border-radius: 50%;
   color: white;
-  font: bold 12px "DM Mono", monospace;
+  font: bold 13px "DM Mono", monospace;
   box-shadow: 2px 2px 0 var(--ink);
   transition: transform .25s ease;
 }
@@ -765,47 +687,149 @@ button { font: inherit; }
 }
 
 /* ============================================================
-   오른쪽 사이드바: 대형 플레이어 카드 & 소유한 땅 목록
+   오른쪽 사이드바: 우측 여백 정중앙 배치 & 대형 폰트
    ============================================================ */
 .sidebar {
+  flex: 0 1 450px;
+  width: 100%;
+  max-width: 460px;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 10px;
-  max-height: 88vh;
+  height: 97vh;
+  max-height: 97vh;
   overflow-y: auto;
-  padding-right: 4px;
+  padding: 4px;
+  box-sizing: border-box;
 }
 
 .sidebar::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 .sidebar::-webkit-scrollbar-thumb {
   background: var(--line);
   border-radius: 3px;
 }
 
+/* 우측 상단 게임 컨트롤 카드 */
+.game-control-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--white);
+  border: 2.5px solid var(--ink);
+  border-radius: 8px;
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+.control-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.brand {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 800;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  color: var(--orange);
+  font-size: 15px;
+}
+
+.brand-title {
+  font-family: "Jua", sans-serif;
+  font-size: 22px;
+  color: var(--orange);
+  text-shadow: 1.5px 1.5px 0 var(--ink);
+}
+
+.sound-toggle-btn {
+  padding: 6px 13px;
+  border: 2px solid var(--ink);
+  background: var(--white);
+  cursor: pointer;
+  font: 13px "DM Mono", monospace;
+  font-weight: 800;
+  border-radius: 5px;
+  transition: all .15s;
+}
+.sound-toggle-btn:hover { background: var(--yellow); }
+
+.control-card-status {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.room-code {
+  padding: 4px 10px;
+  background: #f0ebe1;
+  border: 1.5px solid var(--ink);
+  border-radius: 5px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+  font-family: "DM Mono", monospace;
+}
+
+.status-pill {
+  padding: 4px 11px;
+  background: #f0ebe1;
+  border: 1.5px solid var(--ink);
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink);
+  font-family: "DM Mono", monospace;
+}
+
+.status-pill strong {
+  color: var(--orange);
+  font-size: 15px;
+}
+
+.status-pill strong.time-warning {
+  color: #ef4343 !important;
+  animation: pulse-time .8s infinite alternate;
+}
+
 .sidebar-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-top: 4px;
   margin-bottom: 2px;
 }
 
 .sidebar-header h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: 18px;
   font-family: "Space Grotesk", sans-serif;
   color: var(--ink);
-  font-weight: 800;
+  font-weight: 900;
 }
 
 .player-count-badge {
-  font-size: 12px;
+  font-size: 13px;
   font-family: "DM Mono", monospace;
   background: var(--white);
-  border: 1px solid var(--line);
-  padding: 2px 6px;
-  border-radius: 3px;
+  border: 1.5px solid var(--line);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 700;
 }
 
 /* 개별 플레이어 대형 카드 */
@@ -813,37 +837,37 @@ button { font: inherit; }
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px 14px;
+  padding: 14px 16px;
   background: var(--white);
-  border: 2px solid var(--ink);
-  border-radius: 6px;
-  box-shadow: 3px 3px 0 var(--ink);
+  border: 2.5px solid var(--ink);
+  border-radius: 8px;
+  box-shadow: 4px 4px 0 var(--ink);
   transition: all .2s ease;
 }
 
 .player-card.active {
-  border: 2.5px solid var(--orange);
+  border: 3px solid var(--orange);
   background: #fffcf8;
-  box-shadow: 4px 4px 0 var(--orange);
+  box-shadow: 5px 5px 0 var(--orange);
   transform: scale(1.02);
 }
 
 .player-card-top {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .avatar {
   display: grid;
   flex: 0 0 auto;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border: 2px solid var(--ink);
   border-radius: 50%;
-  font: 16px "DM Mono", monospace;
-  font-weight: bold;
+  font: 18px "DM Mono", monospace;
+  font-weight: 900;
   color: white;
 }
 
@@ -866,8 +890,8 @@ button { font: inherit; }
 }
 
 .player-name {
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 18px;
+  font-weight: 900;
   color: var(--ink);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -876,12 +900,12 @@ button { font: inherit; }
 
 .turn-tag {
   display: none;
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 800;
   color: var(--orange);
   font-family: "DM Mono", monospace;
   background: #ffebe3;
-  padding: 1px 6px;
+  padding: 2px 7px;
   border-radius: 10px;
 }
 
@@ -890,10 +914,11 @@ button { font: inherit; }
 }
 
 .player-location {
-  font-size: 11px;
+  font-size: 13px;
   color: #666;
   font-family: "DM Mono", monospace;
-  font-weight: 600;
+  font-weight: 700;
+  margin-top: 2px;
 }
 
 /* 금액 & 총자산 표시 박스 */
@@ -902,9 +927,9 @@ button { font: inherit; }
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   background: #f7f4ed;
-  border: 1px solid var(--line);
-  padding: 6px 10px;
-  border-radius: 4px;
+  border: 1.5px solid var(--line);
+  padding: 8px 12px;
+  border-radius: 6px;
 }
 
 .wealth-item {
@@ -913,45 +938,45 @@ button { font: inherit; }
 }
 
 .wealth-lbl {
-  font-size: 10px;
-  color: #777;
+  font-size: 12px;
+  color: #666;
   font-family: "DM Mono", monospace;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .money {
-  font: 700 17px "DM Mono", monospace;
+  font: 900 19px "DM Mono", monospace;
   color: var(--ink);
 }
 
 .asset-total {
-  font: 700 17px "DM Mono", monospace;
+  font: 900 19px "DM Mono", monospace;
   color: var(--orange);
 }
 
 /* 소유한 땅 목록 태그 */
 .player-lands-section {
-  border-top: 1px dashed var(--line);
-  padding-top: 6px;
+  border-top: 1.5px dashed var(--line);
+  padding-top: 8px;
 }
 
 .lands-header {
-  font-size: 11px;
-  font-weight: 700;
-  color: #555;
-  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #444;
+  margin-bottom: 5px;
   font-family: "Space Grotesk", sans-serif;
 }
 
 .lands-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  min-height: 22px;
+  gap: 6px;
+  min-height: 24px;
 }
 
 .no-lands {
-  font-size: 11px;
+  font-size: 12px;
   color: #999;
   font-style: italic;
 }
@@ -959,31 +984,36 @@ button { font: inherit; }
 .land-pill {
   display: inline-flex;
   align-items: center;
-  padding: 2px 6px;
+  padding: 3px 8px;
   background: var(--white);
-  border: 1px solid var(--ink);
-  border-radius: 3px;
-  font-size: 11px;
-  font-weight: 700;
+  border: 1.5px solid var(--ink);
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 800;
   color: var(--ink);
-  box-shadow: 1px 1px 0 var(--ink);
+  box-shadow: 1.5px 1.5px 0 var(--ink);
   line-height: 1.2;
 }
 
-.land-pill.building-1::after { content: " 🏠"; font-size: 9px; }
-.land-pill.building-2::after { content: " 🏘️"; font-size: 9px; }
-.land-pill.building-3::after { content: " 🏰"; font-size: 9px; }
+.land-pill.building-1::after { content: " 🏠"; font-size: 11px; }
+.land-pill.building-2::after { content: " 🏘️"; font-size: 11px; }
+.land-pill.building-3::after { content: " 🏰"; font-size: 11px; }
 
-/* 오른쪽 하단 제작자 크레딧 */
+/* 화면 오른쪽 최하단 고정 제작자 크레딧 */
 .app-credit {
-  margin-top: 6px;
-  padding: 6px 4px 2px;
-  text-align: right;
+  position: fixed;
+  right: 20px;
+  bottom: 12px;
+  z-index: 100;
   font-size: 12px;
   font-family: "Space Grotesk", sans-serif;
-  color: #737067;
+  color: #848076;
   font-weight: 700;
   letter-spacing: -0.01em;
+  background: rgba(245, 241, 233, 0.85);
+  padding: 3px 8px;
+  border-radius: 4px;
+  pointer-events: none;
 }
 
 @keyframes cube-roll {
@@ -1000,6 +1030,7 @@ button { font: inherit; }
 .piece.stepping { animation: step-bounce .22s ease-in-out; }
 
 @media (max-width: 900px) {
+  .app-shell { height: auto; padding: 10px; }
   .game-layout {
     grid-template-columns: 1fr;
     gap: 20px;
@@ -1009,11 +1040,12 @@ button { font: inherit; }
     max-width: 600px;
   }
   .sidebar {
+    height: auto;
     max-height: none;
     display: grid;
     grid-template-columns: 1fr 1fr;
   }
-  .sidebar-header {
+  .game-control-card, .sidebar-header {
     grid-column: 1 / -1;
   }
 }
