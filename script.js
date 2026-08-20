@@ -21,6 +21,7 @@ const gameOverDesc = document.querySelector('#game-over-desc');
 const nameFields = document.querySelector('#name-fields');
 const quizEyebrow = document.querySelector('#quiz-eyebrow');
 const quizTitle = document.querySelector('#quiz-title');
+const aiQuizBanner = document.querySelector('#ai-quiz-banner');
 const quizQuestion = document.querySelector('#quiz-question');
 const quizOptions = document.querySelector('#quiz-options');
 const quizResult = document.querySelector('#quiz-result');
@@ -36,6 +37,17 @@ const centerTurnText = document.querySelector('#center-turn-text');
 const soundToggleBtn = document.querySelector('#sound-toggle');
 const closeInfoBtn = document.querySelector('#close-info');
 const restartGameBtn = document.querySelector('#restart-game');
+
+// 토지 매각 모달 요소
+const sellModal = document.querySelector('#sell-modal');
+const sellTitle = document.querySelector('#sell-title');
+const sellDesc = document.querySelector('#sell-desc');
+const sellRequiredToll = document.querySelector('#sell-required-toll');
+const sellCurrentMoney = document.querySelector('#sell-current-money');
+const sellDeficitMoney = document.querySelector('#sell-deficit-money');
+const sellLandsList = document.querySelector('#sell-lands-list');
+const payTollBtn = document.querySelector('#pay-toll-btn');
+const bankruptBtn = document.querySelector('#bankrupt-btn');
 
 // 설정 모달 요소
 const modeRoundBtn = document.querySelector('#mode-round-btn');
@@ -57,8 +69,8 @@ let currentRound = 1;
 let isGameFinished = false;
 let isMoving = false;
 let timerInterval = null;
-const startingMoney = 200000;
-const salaryBonus = 50000;
+const startingMoney = 350000; // 초기 자금 35만원으로 상향
+const salaryBonus = 70000;    // 완주 월급 7만원으로 상향
 
 // Web Audio API 사운드 합성기 (크롬북 정책 호환 및 완벽한 예외 처리)
 class SoundManager {
@@ -938,26 +950,243 @@ function resolveLanding(playerIndex) {
       return;
     }
 
+// 토지 매각 모달 관리 (통행세 부족 시)
+function showSellModal(playerIndex, ownerIndex, toll, spaceName) {
+  const player = gamePlayers[playerIndex];
+  const owner = gamePlayers[ownerIndex];
+
+  sellRequiredToll.textContent = `₩${toll.toLocaleString()}`;
+  
+  function renderSellStatus() {
+    sellCurrentMoney.textContent = `₩${player.money.toLocaleString()}`;
+    const deficit = toll - player.money;
+    if (deficit <= 0) {
+      sellDeficitMoney.textContent = '₩0 (마련 완료!)';
+      sellDeficitMoney.className = 'val green';
+      payTollBtn.disabled = false;
+      payTollBtn.textContent = `통행세 ₩${toll.toLocaleString()} 지불하고 턴 종료`;
+      bankruptBtn.classList.add('hidden');
+    } else {
+      sellDeficitMoney.textContent = `₩${deficit.toLocaleString()}`;
+      sellDeficitMoney.className = 'val red';
+      payTollBtn.disabled = true;
+      payTollBtn.textContent = '부족한 금액을 토지 매각으로 마련하세요';
+    }
+
+    // 매각 가능한 토지 리스트 렌더링
+    const ownedLands = [];
+    propertyState.forEach((st, idx) => {
+      if (st.owner === playerIndex) {
+        const space = spaces[idx];
+        const buildingVal = Math.round(space.cost * 0.5) * st.buildings;
+        const refundVal = space.cost + buildingVal;
+        ownedLands.push({ spaceIndex: idx, space, buildings: st.buildings, refundVal });
+      }
+    });
+
+    if (ownedLands.length === 0) {
+      if (deficit > 0) {
+        sellLandsList.innerHTML = '<p class="no-lands" style="grid-column: 1/-1; color: #ef4343;">더 이상 매각할 토지가 없습니다. 파산 처리됩니다.</p>';
+        bankruptBtn.classList.remove('hidden');
+      } else {
+        sellLandsList.innerHTML = '<p class="no-lands" style="grid-column: 1/-1;">남은 토지가 없습니다.</p>';
+      }
+    } else {
+      bankruptBtn.classList.add('hidden');
+      sellLandsList.innerHTML = ownedLands.map(l => `
+        <div class="sell-land-item">
+          <div class="sell-land-info">
+            <span class="sell-land-name">${l.space.symbol} ${l.space.name}${l.buildings ? ` (건물${l.buildings})` : ''}</span>
+            <span class="sell-land-val">매각가 ₩${l.refundVal.toLocaleString()}</span>
+          </div>
+          <button class="sell-btn" data-space="${l.spaceIndex}" data-refund="${l.refundVal}">매각</button>
+        </div>
+      `).join('');
+
+      sellLandsList.querySelectorAll('.sell-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const sIdx = Number(btn.dataset.space);
+          const refund = Number(btn.dataset.refund);
+          propertyState[sIdx].owner = null;
+          propertyState[sIdx].buildings = 0;
+          player.money += refund;
+          sounds.playCoin();
+          updatePlayerRow(playerIndex);
+          updatePropertyTile(sIdx);
+          renderSellStatus();
+        });
+      });
+    }
+  }
+
+  renderSellStatus();
+  sellModal.classList.remove('hidden');
+
+  payTollBtn.onclick = () => {
+    player.money -= toll;
+    owner.money += toll;
+    sounds.playCoin();
+    updatePlayerRow(playerIndex);
+    updatePlayerRow(ownerIndex);
+    sellModal.classList.add('hidden');
+    endTurn();
+  };
+
+  bankruptBtn.onclick = () => {
+    owner.money += player.money;
+    player.money = 0;
+    updatePlayerRow(playerIndex);
+    updatePlayerRow(ownerIndex);
+    sellModal.classList.add('hidden');
+    checkGameOver('bankrupt');
+  };
+}
+
+// AI 자동 토지 매각 (통행세 부족 시)
+function handleAITollPayment(playerIndex, ownerIndex, toll, spaceName) {
+  const player = gamePlayers[playerIndex];
+  const owner = gamePlayers[ownerIndex];
+
+  if (player.money < toll) {
+    // AI 소유 토지 중 비싼 것부터 순차 매각
+    for (let i = 0; i < propertyState.length; i++) {
+      if (player.money >= toll) break;
+      if (propertyState[i].owner === playerIndex) {
+        const space = spaces[i];
+        const buildingVal = Math.round(space.cost * 0.5) * propertyState[i].buildings;
+        const refund = space.cost + buildingVal;
+        propertyState[i].owner = null;
+        propertyState[i].buildings = 0;
+        player.money += refund;
+        updatePropertyTile(i);
+      }
+    }
+  }
+
+  const paidToll = Math.min(player.money, toll);
+  player.money -= paidToll;
+  owner.money += paidToll;
+  sounds.playCoin();
+  updatePlayerRow(playerIndex);
+  updatePlayerRow(ownerIndex);
+  setTimeout(endTurn, 800);
+}
+
+// AI 퀴즈 풀이 시각적 공유 연출
+function handleAIQuiz(playerIndex, spaceIndex, quiz, isSpecial, space) {
+  const player = gamePlayers[playerIndex];
+  activeQuizSpace = spaceIndex;
+
+  aiQuizBanner.classList.remove('hidden');
+  aiQuizBanner.innerHTML = `<span class="ai-pulse-dot"></span> 🤖 <b>${player.name}</b>가 퀴즈를 읽고 있습니다...`;
+  
+  quizEyebrow.textContent = isSpecial ? 'AI SPECIAL EXPLORATION CHALLENGE' : `WORLD GEOGRAPHY · [${space.tag}]`;
+  quizTitle.textContent = isSpecial ? space.name : `${space.name} 지리 탐험 퀴즈`;
+  quizQuestion.textContent = quiz.question;
+  quizResult.textContent = '지구봇 AI가 정답을 고민하고 있습니다...';
+  quizExplanation.classList.add('hidden');
+  purchaseActions.classList.add('hidden');
+  specialActions.classList.add('hidden');
+
+  quizOptions.innerHTML = '';
+  const shuffled = shuffleArray(quiz.options);
+
+  const optionButtons = shuffled.map(option => {
+    const btn = document.createElement('button');
+    btn.textContent = option;
+    btn.disabled = true; // 사람은 클릭 불가
+    quizOptions.appendChild(btn);
+    return { btn, option };
+  });
+
+  quizModal.classList.remove('hidden');
+
+  // 1.5초 후 AI 정답/오답 선택 연출
+  setTimeout(() => {
+    const isCorrect = Math.random() < 0.78;
+    const targetOption = isCorrect 
+      ? quiz.answer 
+      : shuffled.find(opt => opt !== quiz.answer) || quiz.answer;
+
+    const matched = optionButtons.find(o => o.option === targetOption);
+    if (matched) {
+      if (isCorrect) {
+        matched.btn.classList.add('correct');
+        sounds.playCorrect();
+        quizResult.textContent = `🤖 ${player.name} 정답 선택!`;
+        if (isSpecial) {
+          player.money += 30000;
+          sounds.playCoin();
+          updatePlayerRow(playerIndex);
+        } else if (player.money >= space.cost) {
+          player.money -= space.cost;
+          propertyState[spaceIndex].owner = playerIndex;
+          sounds.playCoin();
+          updatePlayerRow(playerIndex);
+          updatePropertyTile(spaceIndex);
+          quizResult.textContent = `🤖 ${player.name} 정답! 토지(₩${space.cost.toLocaleString()}) 매입 완료`;
+        }
+      } else {
+        matched.btn.classList.add('incorrect');
+        sounds.playIncorrect();
+        quizResult.textContent = `🤖 ${player.name} 오답 선택!`;
+      }
+    }
+
+    quizExplanation.textContent = `💡 교과서 해설: ${quiz.explanation}`;
+    quizExplanation.classList.remove('hidden');
+
+    // 2초 후 퀴즈 모달 닫고 다음 턴 진행
+    setTimeout(() => {
+      quizModal.classList.add('hidden');
+      aiQuizBanner.classList.add('hidden');
+      endTurn();
+    }, 2200);
+  }, 1600);
+}
+
+// 착륙 처리
+function resolveLanding(playerIndex) {
+  if (isGameFinished) return;
+  const player = gamePlayers[playerIndex];
+  const spaceIndex = player.position;
+  const space = spaces[spaceIndex];
+  const state = propertyState[spaceIndex];
+
+  updatePlayerRow(playerIndex);
+
+  // 1. 특수칸 착륙
+  if (space.isSpecial) {
+    activeQuizSpace = spaceIndex;
+
+    if (space.type === 'special-start') {
+      player.money += salaryBonus;
+      sounds.playCoin();
+      updatePlayerRow(playerIndex);
+      endTurn();
+      return;
+    }
+
+    if (space.type === 'special-eco') {
+      const reward = 25000;
+      player.money += reward;
+      sounds.playCoin();
+      updatePlayerRow(playerIndex);
+      endTurn();
+      return;
+    }
+
     // 기후/지형 퀴즈 특수칸
     const isClimate = space.type === 'special-climate';
     const pool = isClimate ? climateSpecialQuizzes : landformSpecialQuizzes;
     const quiz = pool[Math.floor(Math.random() * pool.length)];
 
-    // AI 플레이어인 경우 자동 퀴즈 풀이 (80% 확률 정답)
     if (player.isAI) {
-      const isCorrect = Math.random() < 0.8;
-      if (isCorrect) {
-        player.money += 30000;
-        sounds.playCoin();
-        updatePlayerRow(playerIndex);
-        addActivityLog(`🤖 <b>${player.name}</b>(AI)가 ${space.name}를 맞혀 <b>₩30,000</b>을 획득했습니다.`);
-      } else {
-        addActivityLog(`🤖 <b>${player.name}</b>(AI)가 ${space.name}에서 오답을 냈습니다.`);
-      }
-      setTimeout(endTurn, 1000);
+      handleAIQuiz(playerIndex, spaceIndex, quiz, true, space);
       return;
     }
 
+    aiQuizBanner.classList.add('hidden');
     quizEyebrow.textContent = isClimate ? 'CLIMATE EXPLORATION CHALLENGE' : 'LANDFORM GEOGRAPHY CHALLENGE';
     quizTitle.textContent = isClimate ? '🌍 세계 기후 탐험 퀴즈' : '⛰️ 세계 지형 탐험 퀴즈';
     quizQuestion.textContent = quiz.question;
@@ -984,12 +1213,10 @@ function resolveLanding(playerIndex) {
           player.money += bonus;
           updatePlayerRow(playerIndex);
           quizResult.textContent = `🎉 정답입니다! 탐험 장학금 ₩${bonus.toLocaleString()} 획득!`;
-          addActivityLog(`<b>${player.name}</b>님이 ${space.name}를 맞혀 <b>₩${bonus.toLocaleString()}</b>을 획득했습니다.`);
         } else {
           btn.classList.add('incorrect');
           sounds.playIncorrect();
           quizResult.textContent = '아쉽게도 정답이 아닙니다.';
-          addActivityLog(`<b>${player.name}</b>님이 ${space.name}에서 오답을 선택했습니다.`);
         }
         specialActions.classList.remove('hidden');
       });
@@ -1005,26 +1232,13 @@ function resolveLanding(playerIndex) {
     activeQuizSpace = spaceIndex;
     const quiz = space.quiz;
 
-    // AI 플레이어인 경우 자동 풀이 및 자동 구매 (75% 확률 정답)
     if (player.isAI) {
-      const isCorrect = Math.random() < 0.75;
-      if (isCorrect) {
-        if (player.money >= space.cost) {
-          player.money -= space.cost;
-          state.owner = playerIndex;
-          sounds.playCoin();
-          updatePlayerRow(playerIndex);
-          updatePropertyTile(spaceIndex);
-          addActivityLog(`🤖 <b>${player.name}</b>(AI)가 퀴즈를 맞히고 <b>${space.name}</b>을 매입했습니다.`);
-        }
-      } else {
-        addActivityLog(`🤖 <b>${player.name}</b>(AI)가 ${space.name} 퀴즈에서 오답을 냈습니다.`);
-      }
-      setTimeout(endTurn, 1000);
+      handleAIQuiz(playerIndex, spaceIndex, quiz, false, space);
       return;
     }
 
     // 사람 플레이어 퀴즈 모달
+    aiQuizBanner.classList.add('hidden');
     quizEyebrow.textContent = `WORLD GEOGRAPHY · [${space.tag}]`;
     quizTitle.textContent = `${space.name} 지리 탐험 퀴즈`;
     quizQuestion.textContent = quiz.question;
@@ -1055,7 +1269,6 @@ function resolveLanding(playerIndex) {
           btn.classList.add('incorrect');
           sounds.playIncorrect();
           quizResult.textContent = '아쉽게도 틀렸습니다. 이번 턴에는 구매할 수 없습니다.';
-          addActivityLog(`<b>${player.name}</b>님이 ${space.name} 퀴즈에서 오답을 선택했습니다.`);
           setTimeout(() => {
             quizModal.classList.add('hidden');
             endTurn();
@@ -1075,24 +1288,28 @@ function resolveLanding(playerIndex) {
       sounds.playCoin();
       updatePlayerRow(playerIndex);
       updatePropertyTile(spaceIndex);
-      addActivityLog(`<b>${player.name}</b>님이 <b>${space.name}</b>에 건물(${state.buildings}단계)을 증축했습니다.`);
     }
     setTimeout(endTurn, player.isAI ? 800 : 0);
   } else {
-    // 타인 땅: 통행세 지불
+    // 타인 땅: 통행세 지불 처리 (토지 매각 지원)
     const owner = gamePlayers[state.owner];
     const toll = Math.round((space.cost * (state.buildings + 1)) * 0.5);
-    const paidToll = Math.min(player.money, toll);
 
-    player.money -= paidToll;
-    owner.money += paidToll;
-    sounds.playCoin();
-
-    updatePlayerRow(playerIndex);
-    updatePlayerRow(state.owner);
-
-    addActivityLog(`<b>${player.name}</b> → <b>${owner.name}</b>: ${space.name} 통행세 ₩${paidToll.toLocaleString()} 지불`);
-    setTimeout(endTurn, player.isAI ? 800 : 0);
+    if (player.isAI) {
+      handleAITollPayment(playerIndex, state.owner, toll, space.name);
+    } else {
+      if (player.money >= toll) {
+        player.money -= toll;
+        owner.money += toll;
+        sounds.playCoin();
+        updatePlayerRow(playerIndex);
+        updatePlayerRow(state.owner);
+        setTimeout(endTurn, 600);
+      } else {
+        // 현금 부족 -> 토지 매각 모달 열기!
+        showSellModal(playerIndex, state.owner, toll, space.name);
+      }
+    }
   }
 }
 
