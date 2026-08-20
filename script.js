@@ -1,13 +1,14 @@
 // 2022 개정 초등 사회과 교육과정 [6사10-01], [6사10-02], [6사09-01] 연계 모덕마블
 const board = document.querySelector('#board');
 const rollButton = document.querySelector('#roll-button');
+const rollBtnText = document.querySelector('#roll-btn-text');
 const dieOne = document.querySelector('#die-one');
 const rollSum = document.querySelector('#roll-sum');
 const timer = document.querySelector('#timer');
 const roundNumber = document.querySelector('#round-number');
 const maxRoundText = document.querySelector('#max-round-text');
-const targetRoundDisplay = document.querySelector('#target-round-display');
-const centerMessage = document.querySelector('#center-message');
+const targetRuleDisplay = document.querySelector('#target-rule-display');
+const roundCaptionBox = document.querySelector('#round-caption-box');
 const playerRows = document.querySelectorAll('.player-row[data-player-row]');
 const playerCountNum = document.querySelector('#player-count-num');
 const dieOneFace = dieOne.querySelector('.front');
@@ -15,6 +16,8 @@ const setupModal = document.querySelector('#setup-modal');
 const quizModal = document.querySelector('#quiz-modal');
 const infoModal = document.querySelector('#info-modal');
 const gameOverModal = document.querySelector('#game-over-modal');
+const gameOverTitle = document.querySelector('#game-over-title');
+const gameOverDesc = document.querySelector('#game-over-desc');
 const nameFields = document.querySelector('#name-fields');
 const quizEyebrow = document.querySelector('#quiz-eyebrow');
 const quizTitle = document.querySelector('#quiz-title');
@@ -31,14 +34,26 @@ const claimSpecial = document.querySelector('#claim-special');
 const currentTurnAvatar = document.querySelector('#current-turn-avatar');
 const currentTurnLabel = document.querySelector('#current-turn-label');
 const currentTurnName = document.querySelector('#current-turn-name');
+const centerTurnDot = document.querySelector('#center-turn-dot');
+const centerTurnText = document.querySelector('#center-turn-text');
 const logList = document.querySelector('#log-list');
 const boardLegend = document.querySelector('#board-legend');
 const soundToggleBtn = document.querySelector('#sound-toggle');
 const closeInfoBtn = document.querySelector('#close-info');
 const restartGameBtn = document.querySelector('#restart-game');
 
+// 설정 모달 요소
+const modeRoundBtn = document.querySelector('#mode-round-btn');
+const modeTimeBtn = document.querySelector('#mode-time-btn');
+const roundOptionsGroup = document.querySelector('#round-options-group');
+const timeOptionsGroup = document.querySelector('#time-options-group');
+
 let selectedPlayerCount = 2;
+let gameMode = 'round'; // 'round' 또는 'time'
 let targetMaxRounds = 10;
+let targetTimeMinutes = 5;
+let remainingSeconds = 300;
+let elapsedSeconds = 0;
 let soundEnabled = true;
 let gamePlayers = [];
 let currentPlayerIndex = 0;
@@ -46,6 +61,7 @@ let activeQuizSpace = -1;
 let currentRound = 1;
 let isGameFinished = false;
 let isMoving = false;
+let timerInterval = null;
 const startingMoney = 200000;
 const salaryBonus = 50000;
 
@@ -197,7 +213,6 @@ soundToggleBtn.addEventListener('click', () => {
 
 // 32개 보드칸 데이터 (4개 특수칸 + 28개 국가)
 const spaces = [
-  // [0~7]
   { name: '출발지', symbol: '🚩', type: 'special-start', tag: '시작점', isSpecial: true, cost: 0,
     desc: '세계 일주의 출발지입니다. 이곳을 지나가거나 도착할 때마다 세계 일주 월급 ₩50,000을 받습니다.' },
   { name: '한국', symbol: '◒', type: 'accent-blue', tag: '온대계절풍', cost: 70000,
@@ -263,12 +278,8 @@ const spaces = [
       explanation: '갠지스강은 인도 사람들에게 농업용수와 생활용수를 공급할 뿐만 아니라, 힌두교도들이 성스럽게 여기는 대표적인 하천입니다.'
     }
   },
-
-  // [8]
   { name: '기후 퀴즈', symbol: '🌍', type: 'special-climate', tag: '기후탐험', isSpecial: true, cost: 0,
     desc: '세계의 기후(열대, 건조, 온대, 냉대, 한대, 고산)에 대한 탐구 퀴즈를 풀고 장학금 ₩30,000을 획득하는 특수칸입니다.' },
-
-  // [9~15]
   { name: '이탈리아', symbol: '●', type: 'accent-yellow', tag: '지중해성', cost: 65000,
     desc: '여름이 덥고 건조한 지중해성 기후로, 잎이 단단하고 두꺼운 올리브, 포도, 오렌지 등의 수목 농업이 활발합니다.',
     quiz: {
@@ -332,12 +343,8 @@ const spaces = [
       explanation: '아이슬란드는 빙하와 화산이 공존하는 곳으로, 땅속의 뜨거운 지하수와 마그마 열을 활용한 친환경 지열 발전과 난방이 매우 발달했습니다.'
     }
   },
-
-  // [16]
   { name: '지형 퀴즈', symbol: '⛰️', type: 'special-landform', tag: '지형탐험', isSpecial: true, cost: 0,
     desc: '산지, 하천, 해안, 화산 등 지구상의 다양한 지형 경관 퀴즈를 풀고 장학금 ₩30,000을 획득하는 특수칸입니다.' },
-
-  // [17~23]
   { name: '스위스', symbol: '△', type: 'accent-yellow', tag: '알프스고산', cost: 70000,
     desc: '험준한 알프스 산지 지형을 산악 톱니바퀴 열차와 케이블카로 극복하여 세계적인 산악 관광국이 되었습니다.',
     quiz: {
@@ -401,12 +408,8 @@ const spaces = [
       explanation: '네팔 고산 산지 지형에 사는 셰르파는 높은 해발 고도의 희박한 공기에 적응되어 등산객의 등반을 돕는 필수적인 역할을 합니다.'
     }
   },
-
-  // [24]
   { name: '생태 쉼터', symbol: '🌿', type: 'special-eco', tag: '지구촌보호', isSpecial: true, cost: 0,
     desc: '지구촌 환경 보전 쉼터입니다. 자연을 가꾸고 환경을 지킨 보답으로 환경 보너스 ₩20,000을 받습니다.' },
-
-  // [25~31]
   { name: '브라질', symbol: '●', type: 'accent-pink', tag: '이구아수/아마존', cost: 65000,
     desc: '세계 최대 하천인 아마존강과 세계 3대 폭포인 거대한 이구아수 폭포 지형 경관을 품고 있습니다.',
     quiz: {
@@ -670,17 +673,41 @@ function removePlayerPiece(playerIndex, position) {
   slot?.querySelector('.piece')?.remove();
 }
 
+// 턴 UI 업데이트 (누구 차례인지 크고 명확하게 표시)
 function updateCurrentTurnUI() {
   if (!gamePlayers.length) return;
   const current = gamePlayers[currentPlayerIndex];
+
   currentTurnAvatar.className = `avatar p-${currentPlayerIndex}`;
   currentTurnAvatar.textContent = String(currentPlayerIndex + 1);
   currentTurnLabel.textContent = `${current.name} 차례`;
-  currentTurnName.textContent = `${current.name} 턴`;
+  currentTurnName.textContent = current.name;
+
+  // 보드 정중앙 턴 안내 갱신
+  centerTurnDot.className = `center-turn-dot p-${currentPlayerIndex}`;
+  centerTurnText.innerHTML = `<strong>${current.name}</strong> 님의 차례입니다`;
+
+  // 주사위 버튼 텍스트 갱신
+  if (current.isAI) {
+    rollBtnText.textContent = `🤖 ${current.name} 생각 중...`;
+    rollButton.disabled = true;
+  } else {
+    rollBtnText.textContent = `[${current.name}] 주사위 굴리기`;
+    rollButton.disabled = isMoving || isGameFinished;
+  }
 
   playerRows.forEach((row, index) => {
     row.classList.toggle('active', index === currentPlayerIndex);
   });
+
+  // AI 플레이어 자동 턴 진행
+  if (current.isAI && !isGameFinished && !isMoving) {
+    setTimeout(() => {
+      if (currentPlayerIndex === current.index && !isGameFinished && !isMoving) {
+        triggerDiceRoll();
+      }
+    }, 750);
+  }
 }
 
 function addActivityLog(text) {
@@ -691,7 +718,7 @@ function addActivityLog(text) {
   logList.prepend(p);
 }
 
-// 총자산 계산 도우미 (현금 + 소유 토지/건물 가치)
+// 총자산 계산 (현금 + 토지/건물 가치)
 function calculateTotalAssets(playerIndex) {
   const player = gamePlayers[playerIndex];
   let propertyVal = 0;
@@ -706,8 +733,8 @@ function calculateTotalAssets(playerIndex) {
 }
 
 function updatePlayerRow(index) {
-  const row = playerRows[index];
   const player = gamePlayers[index];
+  const row = playerRows[index];
   if (!row || !player) return;
   row.querySelector('.money').textContent = `₩${player.money.toLocaleString()}`;
   row.querySelector('.player-location').textContent = spaces[player.position].name;
@@ -737,11 +764,13 @@ function shuffleArray(arr) {
   return array;
 }
 
-function createPlayers(names) {
-  gamePlayers = names.map((name, index) => {
+function createPlayers(playerConfigs) {
+  gamePlayers = playerConfigs.map((cfg, index) => {
     renderPlayerPiece(index, 0);
     return {
-      name,
+      index,
+      name: cfg.name,
+      isAI: cfg.isAI || false,
       money: startingMoney,
       position: 0
     };
@@ -751,7 +780,8 @@ function createPlayers(names) {
     const visible = index < gamePlayers.length;
     row.style.display = visible ? 'flex' : 'none';
     if (visible) {
-      row.querySelector('.player-name').textContent = gamePlayers[index].name;
+      const p = gamePlayers[index];
+      row.querySelector('.player-name').textContent = p.name + (p.isAI ? ' (AI)' : '');
       row.querySelector('.money').textContent = `₩${startingMoney.toLocaleString()}`;
       row.querySelector('.player-location').textContent = '출발지';
       row.querySelector('.asset-total').textContent = `총 ₩${startingMoney.toLocaleString()}`;
@@ -764,19 +794,37 @@ function createPlayers(names) {
   playerCountNum.textContent = `${String(gamePlayers.length).padStart(2, '0')} / 04`;
   boardLegend.innerHTML = gamePlayers.map((p, i) => `<i class="legend-dot p-${i}"></i> ${p.name}`).join(' ');
 
-  maxRoundText.textContent = String(targetMaxRounds);
-  targetRoundDisplay.textContent = `목표: ${targetMaxRounds}라운드`;
+  if (gameMode === 'round') {
+    maxRoundText.textContent = String(targetMaxRounds);
+    targetRuleDisplay.textContent = `목표: ${targetMaxRounds}라운드 완주`;
+    roundCaptionBox.style.display = 'inline';
+  } else {
+    targetRuleDisplay.textContent = `목표: ${targetTimeMinutes}분 타임어택`;
+    roundCaptionBox.style.display = 'none';
+  }
 
   updateCurrentTurnUI();
-  addActivityLog(`<b>${gamePlayers.map(p => p.name).join(', ')}</b>님이 ${targetMaxRounds}라운드 탐험을 시작했습니다.`);
+  addActivityLog(`<b>${gamePlayers.map(p => p.name).join(', ')}</b>님이 게임을 시작했습니다! (${gameMode === 'round' ? targetMaxRounds + 'R' : targetTimeMinutes + '분'})`);
 }
 
 // 최종 게임 종료 및 시상대 팝업
-function checkGameOver() {
-  if (currentRound > targetMaxRounds && !isGameFinished) {
+function checkGameOver(reason = 'round') {
+  if (isGameFinished) return true;
+
+  const shouldEndByRound = (gameMode === 'round' && currentRound > targetMaxRounds);
+  const shouldEndByTime = (gameMode === 'time' && reason === 'time');
+
+  if (shouldEndByRound || shouldEndByTime) {
     isGameFinished = true;
     rollButton.disabled = true;
     sounds.playFanfare();
+
+    if (timerInterval) clearInterval(timerInterval);
+
+    gameOverTitle.textContent = shouldEndByTime ? '⏱️ 제한 시간 종료!' : '🏁 라운드 완주!';
+    gameOverDesc.textContent = shouldEndByTime 
+      ? `설정된 ${targetTimeMinutes}분의 탐험 시간이 모두 끝났습니다! 최종 자산 순위입니다.`
+      : `목표한 ${targetMaxRounds}라운드를 모두 완주했습니다! 최종 자산 순위입니다.`;
 
     const ranking = gamePlayers.map((p, idx) => ({
       index: idx,
@@ -797,7 +845,7 @@ function checkGameOver() {
     `).join('');
 
     gameOverModal.classList.remove('hidden');
-    addActivityLog(`🏆 게임 종료! <b>${ranking[0].name}</b>님이 총자산 ₩${ranking[0].totalAssets.toLocaleString()}으로 최종 우승을 차지했습니다!`);
+    addActivityLog(`🏆 게임 종료! <b>${ranking[0].name}</b>님이 총자산 <b>₩${ranking[0].totalAssets.toLocaleString()}</b>으로 최종 우승을 차지했습니다!`);
     return true;
   }
   return false;
@@ -805,6 +853,8 @@ function checkGameOver() {
 
 // 턴 종료
 function endTurn() {
+  if (isGameFinished) return;
+
   currentPlayerIndex = (currentPlayerIndex + 1) % gamePlayers.length;
   if (currentPlayerIndex === 0) {
     currentRound += 1;
@@ -813,14 +863,14 @@ function endTurn() {
 
   gamePlayers.forEach((_, idx) => updatePlayerRow(idx));
 
-  if (!checkGameOver()) {
+  if (!checkGameOver('round')) {
     updateCurrentTurnUI();
-    rollButton.disabled = false;
   }
 }
 
 // 착륙 처리
 function resolveLanding(playerIndex) {
+  if (isGameFinished) return;
   const player = gamePlayers[playerIndex];
   const spaceIndex = player.position;
   const space = spaces[spaceIndex];
@@ -836,7 +886,6 @@ function resolveLanding(playerIndex) {
       player.money += salaryBonus;
       sounds.playCoin();
       updatePlayerRow(playerIndex);
-      centerMessage.textContent = `[출발지 도착] 세계 일주 보너스 ₩${salaryBonus.toLocaleString()}을 받았습니다!`;
       addActivityLog(`<b>${player.name}</b>님이 출발지에 도착하여 <b>₩${salaryBonus.toLocaleString()}</b>을 획득했습니다.`);
       endTurn();
       return;
@@ -847,7 +896,6 @@ function resolveLanding(playerIndex) {
       player.money += reward;
       sounds.playCoin();
       updatePlayerRow(playerIndex);
-      centerMessage.textContent = `[지구촌 생태 쉼터] 환경 보전 보너스 ₩${reward.toLocaleString()}을 획득했습니다!`;
       addActivityLog(`<b>${player.name}</b>님이 생태 쉼터에서 힐링하고 <b>₩${reward.toLocaleString()}</b>을 받았습니다.`);
       endTurn();
       return;
@@ -857,6 +905,21 @@ function resolveLanding(playerIndex) {
     const isClimate = space.type === 'special-climate';
     const pool = isClimate ? climateSpecialQuizzes : landformSpecialQuizzes;
     const quiz = pool[Math.floor(Math.random() * pool.length)];
+
+    // AI 플레이어인 경우 자동 퀴즈 풀이 (80% 확률 정답)
+    if (player.isAI) {
+      const isCorrect = Math.random() < 0.8;
+      if (isCorrect) {
+        player.money += 30000;
+        sounds.playCoin();
+        updatePlayerRow(playerIndex);
+        addActivityLog(`🤖 <b>${player.name}</b>(AI)가 ${space.name}를 맞혀 <b>₩30,000</b>을 획득했습니다.`);
+      } else {
+        addActivityLog(`🤖 <b>${player.name}</b>(AI)가 ${space.name}에서 오답을 냈습니다.`);
+      }
+      setTimeout(endTurn, 1000);
+      return;
+    }
 
     quizEyebrow.textContent = isClimate ? 'CLIMATE EXPLORATION CHALLENGE' : 'LANDFORM GEOGRAPHY CHALLENGE';
     quizTitle.textContent = isClimate ? '🌍 세계 기후 탐험 퀴즈' : '⛰️ 세계 지형 탐험 퀴즈';
@@ -905,6 +968,26 @@ function resolveLanding(playerIndex) {
     activeQuizSpace = spaceIndex;
     const quiz = space.quiz;
 
+    // AI 플레이어인 경우 자동 풀이 및 자동 구매 (75% 확률 정답)
+    if (player.isAI) {
+      const isCorrect = Math.random() < 0.75;
+      if (isCorrect) {
+        if (player.money >= space.cost) {
+          player.money -= space.cost;
+          state.owner = playerIndex;
+          sounds.playCoin();
+          updatePlayerRow(playerIndex);
+          updatePropertyTile(spaceIndex);
+          addActivityLog(`🤖 <b>${player.name}</b>(AI)가 퀴즈를 맞히고 <b>${space.name}</b>을 매입했습니다.`);
+        }
+      } else {
+        addActivityLog(`🤖 <b>${player.name}</b>(AI)가 ${space.name} 퀴즈에서 오답을 냈습니다.`);
+      }
+      setTimeout(endTurn, 1000);
+      return;
+    }
+
+    // 사람 플레이어 퀴즈 모달
     quizEyebrow.textContent = `WORLD GEOGRAPHY · [${space.tag}]`;
     quizTitle.textContent = `${space.name} 지리 탐험 퀴즈`;
     quizQuestion.textContent = quiz.question;
@@ -955,12 +1038,9 @@ function resolveLanding(playerIndex) {
       sounds.playCoin();
       updatePlayerRow(playerIndex);
       updatePropertyTile(spaceIndex);
-      centerMessage.textContent = `${player.name}님이 ${space.name}에 건물을 증축했습니다. (건물 ${state.buildings}단계)`;
       addActivityLog(`<b>${player.name}</b>님이 <b>${space.name}</b>에 건물(${state.buildings}단계)을 증축했습니다.`);
-    } else {
-      centerMessage.textContent = `${player.name}님이 본인 소유의 ${space.name}에서 휴식합니다.`;
     }
-    endTurn();
+    setTimeout(endTurn, player.isAI ? 800 : 0);
   } else {
     // 타인 땅: 통행세 지불
     const owner = gamePlayers[state.owner];
@@ -974,15 +1054,15 @@ function resolveLanding(playerIndex) {
     updatePlayerRow(playerIndex);
     updatePlayerRow(state.owner);
 
-    centerMessage.textContent = `${player.name}님이 ${owner.name}의 ${space.name}에 도착해 통행세 ₩${paidToll.toLocaleString()}를 지불했습니다.`;
     addActivityLog(`<b>${player.name}</b> → <b>${owner.name}</b>: ${space.name} 통행세 ₩${paidToll.toLocaleString()} 지불`);
-    endTurn();
+    setTimeout(endTurn, player.isAI ? 800 : 0);
   }
 }
 
 // 말 1칸씩 순차적 점프 이동 애니메이션
 async function movePlayerStepByStep(playerIndex, steps) {
   isMoving = true;
+  rollButton.disabled = true;
   const player = gamePlayers[playerIndex];
 
   for (let s = 1; s <= steps; s++) {
@@ -996,7 +1076,7 @@ async function movePlayerStepByStep(playerIndex, steps) {
     piece.classList.add('stepping');
     sounds.playStep();
 
-    // 0번(출발지)을 통과하는 순간 월급 보너스 실시간 지급
+    // 0번(출발지) 통과 시 월급 보너스 즉시 지급
     if (nextPos === 0) {
       player.money += salaryBonus;
       sounds.playCoin();
@@ -1012,8 +1092,8 @@ async function movePlayerStepByStep(playerIndex, steps) {
   resolveLanding(playerIndex);
 }
 
-// 주사위 굴리기 (단일 주사위)
-rollButton.addEventListener('click', () => {
+// 주사위 굴리기 실행 함수
+function triggerDiceRoll() {
   if (!gamePlayers.length || isGameFinished || isMoving) return;
   rollButton.disabled = true;
   dieOne.classList.add('is-rolling');
@@ -1040,7 +1120,9 @@ rollButton.addEventListener('click', () => {
       }, 350);
     }
   }, 65);
-});
+}
+
+rollButton.addEventListener('click', triggerDiceRoll);
 
 // 땅 구매
 buyProperty.addEventListener('click', () => {
@@ -1090,20 +1172,38 @@ restartGameBtn.addEventListener('click', () => {
   location.reload();
 });
 
-// 플레이어 설정 모달 관리
+// 플레이어 이름 필드 생성 (1인용일 경우 AI 컴퓨터 안내)
 function renderNameFields() {
   nameFields.innerHTML = '';
-  for (let index = 0; index < selectedPlayerCount; index += 1) {
+  if (selectedPlayerCount === 1) {
     const input = document.createElement('input');
     input.className = 'name-field';
-    input.name = `player-${index + 1}`;
+    input.name = 'player-1';
     input.maxLength = 10;
-    input.placeholder = `플레이어 ${index + 1} 이름`;
-    input.value = `플레이어 ${index + 1}`;
+    input.placeholder = '내 이름';
+    input.value = '탐험가';
     nameFields.appendChild(input);
+
+    const aiNotice = document.createElement('div');
+    aiNotice.style.fontSize = '12px';
+    aiNotice.style.color = '#777';
+    aiNotice.style.marginTop = '6px';
+    aiNotice.textContent = '🤖 상대: 지구봇 AI (자동 대전)';
+    nameFields.appendChild(aiNotice);
+  } else {
+    for (let index = 0; index < selectedPlayerCount; index += 1) {
+      const input = document.createElement('input');
+      input.className = 'name-field';
+      input.name = `player-${index + 1}`;
+      input.maxLength = 10;
+      input.placeholder = `플레이어 ${index + 1} 이름`;
+      input.value = `플레이어 ${index + 1}`;
+      nameFields.appendChild(input);
+    }
   }
 }
 
+// 인원 선택 버튼
 document.querySelectorAll('.player-count-select .setup-count').forEach((button) => {
   button.addEventListener('click', () => {
     selectedPlayerCount = Number(button.dataset.count);
@@ -1112,6 +1212,24 @@ document.querySelectorAll('.player-count-select .setup-count').forEach((button) 
   });
 });
 
+// 라운드제 vs 시간제 모드 전환
+modeRoundBtn.addEventListener('click', () => {
+  gameMode = 'round';
+  modeRoundBtn.classList.add('active');
+  modeTimeBtn.classList.remove('active');
+  roundOptionsGroup.classList.remove('hidden');
+  timeOptionsGroup.classList.add('hidden');
+});
+
+modeTimeBtn.addEventListener('click', () => {
+  gameMode = 'time';
+  modeTimeBtn.classList.add('active');
+  modeRoundBtn.classList.remove('active');
+  timeOptionsGroup.classList.remove('hidden');
+  roundOptionsGroup.classList.add('hidden');
+});
+
+// 라운드 수 선택
 document.querySelectorAll('.round-count-select .setup-round').forEach((button) => {
   button.addEventListener('click', () => {
     targetMaxRounds = Number(button.dataset.rounds);
@@ -1119,24 +1237,70 @@ document.querySelectorAll('.round-count-select .setup-round').forEach((button) =
   });
 });
 
+// 시간 선택
+document.querySelectorAll('.time-count-select .setup-round').forEach((button) => {
+  button.addEventListener('click', () => {
+    targetTimeMinutes = Number(button.dataset.minutes);
+    remainingSeconds = targetTimeMinutes * 60;
+    document.querySelectorAll('.time-count-select .setup-round').forEach((item) => item.classList.toggle('active', item === button));
+  });
+});
+
+// 게임 시작 버튼
 document.querySelector('#start-game').addEventListener('click', () => {
   sounds.init();
-  const names = [...nameFields.querySelectorAll('input')].map((input, index) => input.value.trim() || `플레이어 ${index + 1}`);
-  createPlayers(names);
+  let playerConfigs = [];
+  if (selectedPlayerCount === 1) {
+    const myName = nameFields.querySelector('input').value.trim() || '탐험가';
+    playerConfigs = [
+      { name: myName, isAI: false },
+      { name: '지구봇 AI', isAI: true }
+    ];
+  } else {
+    const inputs = [...nameFields.querySelectorAll('input')];
+    playerConfigs = inputs.map((input, index) => ({
+      name: input.value.trim() || `플레이어 ${index + 1}`,
+      isAI: false
+    }));
+  }
+
+  if (gameMode === 'time') {
+    remainingSeconds = targetTimeMinutes * 60;
+  }
+
+  createPlayers(playerConfigs);
   setupModal.classList.add('hidden');
-  centerMessage.textContent = `${names.length}명이 모덕마블(${targetMaxRounds}R)을 시작합니다! 주사위를 굴려주세요.`;
+
+  // 타이머 루프 시작
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    if (isGameFinished) return;
+
+    if (gameMode === 'round') {
+      elapsedSeconds += 1;
+      const m = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+      const s = String(elapsedSeconds % 60).padStart(2, '0');
+      timer.textContent = `${m}:${s}`;
+    } else {
+      // 시간 제한제 카운트다운
+      remainingSeconds -= 1;
+      if (remainingSeconds <= 0) {
+        remainingSeconds = 0;
+        timer.textContent = '00:00';
+        timer.classList.add('time-warning');
+        checkGameOver('time');
+        return;
+      }
+      const m = String(Math.floor(remainingSeconds / 60)).padStart(2, '0');
+      const s = String(remainingSeconds % 60).padStart(2, '0');
+      timer.textContent = `${m}:${s}`;
+
+      if (remainingSeconds <= 30) {
+        timer.classList.add('time-warning');
+      }
+    }
+  }, 1000);
 });
 
 renderNameFields();
-
-// 게임 타이머
-let seconds = 0;
-setInterval(() => {
-  if (!isGameFinished) {
-    seconds += 1;
-    const m = String(Math.floor(seconds / 60)).padStart(2, '0');
-    const s = String(seconds % 60).padStart(2, '0');
-    timer.textContent = `${m}:${s}`;
-  }
-}, 1000);
 
