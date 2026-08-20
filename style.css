@@ -79,31 +79,36 @@ button { font: inherit; }
 .board { display: grid; grid-template: repeat(9, 1fr) / repeat(9, 1fr); width: 100%; height: 100%; border: 2px solid var(--ink); background: var(--ink); gap: 2px; }
 
 /* 타일 스타일 */
-.tile { position: relative; display: flex; flex-direction: column; justify-content: space-between; min-width: 0; padding: 6px 5px; background: var(--white); overflow: hidden; cursor: pointer; transition: filter .15s; }
-.tile:hover { filter: brightness(1.08); outline: 2px solid var(--orange); z-index: 5; }
+.tile { position: relative; display: flex; flex-direction: column; justify-content: space-between; align-items: center; min-width: 0; padding: 4px 3px 2px; background: var(--white); overflow: hidden; cursor: pointer; transition: filter .15s; }
+.tile:hover { filter: brightness(1.08); outline: 2px solid var(--orange); z-index: 8; }
 .tile:nth-child(odd) { background: #faf6ed; }
 .tile.empty { background: transparent; cursor: default; }
 .tile.empty:hover { filter: none; outline: none; }
-.tile.photo-tile { position: relative; isolation: isolate; background-size: cover; background-position: center; color: var(--white); text-shadow: 0 1px 4px rgba(0,0,0,.8); }
-.tile.photo-tile::after { position: absolute; z-index: -1; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.5), rgba(0,0,0,.1) 45%, rgba(0,0,0,.75)); content: ""; }
+.tile.photo-tile { position: relative; isolation: isolate; background-size: cover; background-position: center; color: var(--white); text-shadow: 0 1px 4px rgba(0,0,0,.85); }
+.tile.photo-tile::after { position: absolute; z-index: -1; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.6), rgba(0,0,0,.2) 40%, rgba(0,0,0,.8)); content: ""; }
 
 .tile.special-start { background: linear-gradient(135deg, #ef6a43, #c53c16) !important; color: white !important; }
 .tile.special-climate { background: linear-gradient(135deg, #407b68, #2a5a4b) !important; color: white !important; }
 .tile.special-landform { background: linear-gradient(135deg, #b86e30, #884a14) !important; color: white !important; }
 .tile.special-eco { background: linear-gradient(135deg, #3d8652, #215e33) !important; color: white !important; }
 .tile.special-tile .tile-name { font-size: clamp(9px, 1.1vw, 14px); color: #fff; text-shadow: 0 1px 3px #000; font-weight: bold; }
-.tile.special-tile .special-badge { position: absolute; top: 4px; right: 4px; font-size: 14px; }
+.tile.special-tile .special-badge { position: absolute; top: 3px; right: 3px; font-size: 13px; }
 
-.tile-category-tag { font-size: clamp(6px, 0.65vw, 9px); padding: 1px 4px; background: rgba(0,0,0,0.65); color: #fff; border-radius: 2px; width: fit-content; margin-bottom: 2px; text-shadow: none; font-weight: 500; }
-.tile-name { display: block; width: 100%; max-width: 100%; margin: 0 auto; overflow: hidden; text-align: center; white-space: nowrap; text-overflow: clip; font-size: clamp(10px, 1.2vw, 17px); line-height: 1.1; font-weight: 700; }
-.tile-name.medium-name { font-size: clamp(8px, 1vw, 14px); }
-.tile-name.long-name { font-size: clamp(6px, 0.75vw, 11px); }
+.tile-category-tag { font-size: clamp(5.5px, 0.6vw, 8.5px); padding: 1px 3px; background: rgba(0,0,0,0.7); color: #fff; border-radius: 2px; width: fit-content; max-width: 95%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-shadow: none; font-weight: 600; line-height: 1.1; margin-bottom: 1px; z-index: 2; }
+.tile-name { position: relative; z-index: 3; display: flex; align-items: center; justify-content: center; width: 100%; max-width: 100%; margin: auto 0; overflow: hidden; text-align: center; white-space: nowrap; text-overflow: ellipsis; font-size: clamp(9px, 1.15vw, 16px); line-height: 1.15; font-weight: 800; text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 5px rgba(0,0,0,0.6); pointer-events: none; }
+.tile-name.medium-name { font-size: clamp(8px, 0.95vw, 13px); }
+.tile-name.long-name { font-size: clamp(6.5px, 0.75vw, 11px); }
 
-.owner-badge { position: absolute; z-index: 4; left: 3px; right: 3px; bottom: 3px; padding: 2px 3px; color: var(--ink); background: rgba(255,253,247,.95); font: 700 clamp(7px, .75vw, 11px) "Space Grotesk", sans-serif; text-align: center; text-shadow: none; border: 1px solid var(--ink); border-radius: 2px; }
-.tile.owner-0 { box-shadow: inset 0 0 0 3px rgba(239,106,67,1); background-color: rgba(239,106,67,.3); background-blend-mode: screen; }
-.tile.owner-1 { box-shadow: inset 0 0 0 3px rgba(78,123,141,1); background-color: rgba(78,123,141,.3); background-blend-mode: screen; }
-.tile.owner-2 { box-shadow: inset 0 0 0 3px rgba(214,165,0,1); background-color: rgba(214,165,0,.32); background-blend-mode: screen; }
-.tile.owner-3 { box-shadow: inset 0 0 0 3px rgba(74,155,112,1); background-color: rgba(74,155,112,.3); background-blend-mode: screen; }
+/* 소유자 배지: 나라 이름을 가리지 않도록 타일 최하단 슬림 바 형태로 배치 */
+.owner-badge { position: relative; z-index: 5; width: 100%; padding: 1px 2px; color: #fff; font: 700 clamp(6.5px, 0.7vw, 9.5px) "Space Grotesk", sans-serif; text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,0.8); border-radius: 2px; line-height: 1.2; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tile.owner-0 { box-shadow: inset 0 0 0 3px #ef6a43; }
+.tile.owner-0 .owner-badge { background: #ef6a43; }
+.tile.owner-1 { box-shadow: inset 0 0 0 3px #4e7b8d; }
+.tile.owner-1 .owner-badge { background: #4e7b8d; }
+.tile.owner-2 { box-shadow: inset 0 0 0 3px #d6a500; }
+.tile.owner-2 .owner-badge { background: #b88e00; }
+.tile.owner-3 { box-shadow: inset 0 0 0 3px #4a9b70; }
+.tile.owner-3 .owner-badge { background: #3d8652; }
 
 /* 타일 내 다중 말 배치 컨테이너 (겹침 방지) */
 .piece-container { position: absolute; z-index: 6; inset: 2px; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; pointer-events: none; }
