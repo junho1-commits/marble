@@ -80,11 +80,14 @@ let isMoving = false;
 let timerInterval = null;
 let extraRollPending = false;    // '한 번 더 굴리기' 카드
 let pendingPurchaseDiscount = 1; // '반값 매입권' 적용 여부
+let afterQuizAction = null;      // 퀴즈 확인 버튼을 눌렀을 때 이어서 할 일
 
 const startingMoney = 350000;    // 초기 자금
 const salaryBonus = 70000;       // 출발지 통과 월급
 const lapBonus = 30000;          // 출발지에 정확히 도착했을 때 완주 보너스
 const specialQuizReward = 30000; // 기후/지형 퀴즈 정답 장학금
+const landQuizReward = 5000;     // 나라 칸 퀴즈를 맞혔을 때 주는 탐험 수당
+const WRONG_TOLL_RATE = 1.2;     // 통행세 퀴즈를 틀리면 1.2배
 
 // 통행세 = 땅값 × 건물 단계별 배율. 초반 부담은 낮추고, 잘 키운 땅은 무섭게.
 const TOLL_RATES = [0.35, 0.7, 1.2, 1.9];
@@ -853,10 +856,66 @@ function bankruptPlayer(playerIndex, creditorIndex) {
 // ============================================================
 // 통행세 (사람 / AI 같은 규칙)
 // ============================================================
+// 남의 땅에 도착하면 그 나라 퀴즈를 먼저 낸다.
+// 맞히면 통행세를 그대로, 틀리면 1.2배를 낸다.
 function payToll(playerIndex, ownerIndex, spaceIndex) {
   const player = gamePlayers[playerIndex];
+  const space = spaces[spaceIndex];
+  const quiz = countryQuiz(space.name);
+  if (!quiz) { settleToll(playerIndex, ownerIndex, spaceIndex, 1); return; }
+
+  activeQuizSpace = spaceIndex;
+  const baseToll = tollOf(spaceIndex);
+  const wrongToll = Math.round(baseToll * WRONG_TOLL_RATE);
+
+  if (player.isAI) {
+    handleAIQuiz(playerIndex, spaceIndex, quiz, false, space, (correct) => {
+      settleToll(playerIndex, ownerIndex, spaceIndex, correct ? 1 : WRONG_TOLL_RATE);
+    });
+    return;
+  }
+
+  aiQuizBanner.classList.add('hidden');
+  quizEyebrow.textContent = `TOLL CHALLENGE · [${space.tag}]`;
+  quizTitle.textContent = `${space.name} 통행세 문제`;
+  quizQuestion.textContent = quiz.question;
+  quizResult.textContent = `맞히면 통행세 ${won(baseToll)}, 틀리면 ${won(wrongToll)}을 냅니다.`;
+  quizExplanation.classList.add('hidden');
+  purchaseActions.classList.add('hidden');
+  specialActions.classList.add('hidden');
+
+  quizOptions.innerHTML = '';
+  shuffleArray(quiz.options).forEach((option) => {
+    const btn = document.createElement('button');
+    btn.textContent = option;
+    btn.addEventListener('click', () => {
+      [...quizOptions.querySelectorAll('button')].forEach(b => { b.disabled = true; });
+      quizExplanation.textContent = `💡 교과서 탐구: ${quiz.explanation}`;
+      quizExplanation.classList.remove('hidden');
+      const correct = option === quiz.answer;
+      if (correct) {
+        btn.classList.add('correct');
+        sounds.playCorrect();
+        quizResult.textContent = `🎉 정답! 통행세는 ${won(baseToll)} 그대로입니다.`;
+      } else {
+        btn.classList.add('incorrect');
+        sounds.playIncorrect();
+        quizResult.textContent = `아쉽습니다. 통행세가 1.2배인 ${won(wrongToll)}이 됩니다.`;
+      }
+      afterQuizAction = () => settleToll(playerIndex, ownerIndex, spaceIndex, correct ? 1 : WRONG_TOLL_RATE);
+      specialActions.classList.remove('hidden');
+    });
+    quizOptions.appendChild(btn);
+  });
+
+  quizModal.classList.remove('hidden');
+}
+
+// 실제로 통행세를 주고받는 부분
+function settleToll(playerIndex, ownerIndex, spaceIndex, multiplier) {
+  const player = gamePlayers[playerIndex];
   const owner = gamePlayers[ownerIndex];
-  const toll = tollOf(spaceIndex);
+  const toll = Math.round(tollOf(spaceIndex) * (multiplier || 1));
   const space = spaces[spaceIndex];
 
   const useFreePass = () => {
@@ -1136,15 +1195,17 @@ function teleportTo(playerIndex, spaceIndex) {
 // ============================================================
 // AI 퀴즈 풀이 연출
 // ============================================================
-function handleAIQuiz(playerIndex, spaceIndex, quiz, isSpecial, space) {
+function handleAIQuiz(playerIndex, spaceIndex, quiz, isSpecial, space, onDone) {
   const player = gamePlayers[playerIndex];
   activeQuizSpace = spaceIndex;
 
   aiQuizBanner.classList.remove('hidden');
   aiQuizBanner.innerHTML = `<span class="ai-pulse-dot"></span> 🤖 <b>${player.name}</b>가 퀴즈를 읽고 있습니다...`;
 
-  quizEyebrow.textContent = isSpecial ? 'AI SPECIAL EXPLORATION CHALLENGE' : `WORLD GEOGRAPHY · [${space.tag}]`;
-  quizTitle.textContent = isSpecial ? space.name : `${space.name} 지리 탐험 퀴즈`;
+  quizEyebrow.textContent = isSpecial ? 'AI SPECIAL EXPLORATION CHALLENGE'
+    : (onDone ? `TOLL CHALLENGE · [${space.tag}]` : `WORLD GEOGRAPHY · [${space.tag}]`);
+  quizTitle.textContent = isSpecial ? space.name
+    : (onDone ? `${space.name} 통행세 문제` : `${space.name} 지리 탐험 퀴즈`);
   quizQuestion.textContent = quiz.question;
   quizResult.textContent = '지구봇 AI가 정답을 고민하고 있습니다...';
   quizExplanation.classList.add('hidden');
@@ -1174,12 +1235,15 @@ function handleAIQuiz(playerIndex, spaceIndex, quiz, isSpecial, space) {
         matched.btn.classList.add('correct');
         sounds.playCorrect();
         quizResult.textContent = `🤖 ${player.name} 정답 선택!`;
-        if (isSpecial) {
+        if (onDone) {
+          // 통행세 문제처럼 이어질 동작이 따로 있는 경우
+        } else if (isSpecial) {
           player.money += specialQuizReward;
           sounds.playCoin();
           showToast('🎓', `🤖 <b>${player.name}</b> 정답! 장학금 <b>${won(specialQuizReward)}</b>`, 'good');
           updateAllRows();
         } else {
+          player.money += landQuizReward;
           const useHalf = player.items.includes('half-price');
           const price = useHalf ? Math.round(space.cost * 0.5) : space.cost;
           if (player.money >= price) {
@@ -1196,7 +1260,9 @@ function handleAIQuiz(playerIndex, spaceIndex, quiz, isSpecial, space) {
       } else {
         matched.btn.classList.add('incorrect');
         sounds.playIncorrect();
-        quizResult.textContent = `🤖 ${player.name} 오답 선택!`;
+        quizResult.textContent = onDone
+          ? `🤖 ${player.name} 오답! 통행세를 1.2배로 냅니다.`
+          : `🤖 ${player.name} 오답 선택!`;
       }
     }
 
@@ -1207,7 +1273,7 @@ function handleAIQuiz(playerIndex, spaceIndex, quiz, isSpecial, space) {
       if (isGameFinished) return;
       quizModal.classList.add('hidden');
       aiQuizBanner.classList.add('hidden');
-      endTurn();
+      if (onDone) onDone(isCorrect); else endTurn();
     }, 2200);
   }, 1600);
 }
@@ -1300,13 +1366,13 @@ function resolveLanding(playerIndex) {
     quizEyebrow.textContent = `WORLD GEOGRAPHY · [${space.tag}]`;
     quizTitle.textContent = `${space.name} 지리 탐험 퀴즈`;
     quizQuestion.textContent = quiz.question;
-    quizResult.textContent = '정답을 맞히면 이 땅을 구매할 자격이 주어집니다.';
     quizExplanation.classList.add('hidden');
     purchaseActions.classList.add('hidden');
     specialActions.classList.add('hidden');
     purchaseQuestion.textContent = hasHalf
       ? `🏷️ 반값 매입권 사용! ${space.name} 땅을 ${won(price)}에 구매하시겠습니까? (원래 ${won(space.cost)})`
       : `${space.name} 땅을 ${won(price)}에 구매하시겠습니까?`;
+    quizResult.textContent = `정답을 맞히면 탐험 수당 ${won(landQuizReward)}을 받고 이 땅을 구매할 자격이 생깁니다.`;
 
     quizOptions.innerHTML = '';
     shuffleArray(quiz.options).forEach((option) => {
@@ -1320,7 +1386,10 @@ function resolveLanding(playerIndex) {
         if (option === quiz.answer) {
           btn.classList.add('correct');
           sounds.playCorrect();
-          quizResult.textContent = '🎉 정답입니다! 땅을 구매할 수 있습니다.';
+          player.money += landQuizReward;
+          updateAllRows();
+          quizResult.textContent = `🎉 정답입니다! 탐험 수당 ${won(landQuizReward)}을 받고 땅을 구매할 수 있습니다.`;
+          showToast('🎓', `정답! 탐험 수당 <b>${won(landQuizReward)}</b>을 받았습니다.`, 'good');
           purchaseActions.classList.remove('hidden');
         } else {
           btn.classList.add('incorrect');
@@ -1560,7 +1629,9 @@ skipProperty.addEventListener('click', () => {
 claimSpecial.addEventListener('click', () => {
   specialActions.classList.add('hidden');
   quizModal.classList.add('hidden');
-  endTurn();
+  const next = afterQuizAction;
+  afterQuizAction = null;
+  if (next) next(); else endTurn();
 });
 
 restartGameBtn.addEventListener('click', () => location.reload());
