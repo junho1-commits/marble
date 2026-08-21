@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Jua&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260821_20" />
+    <link rel="stylesheet" href="style.css?v=20260822_01" />
   </head>
   <body>
     <!-- 게임 설정 모달 -->
@@ -38,6 +38,9 @@
             <button class="setup-round active" data-rounds="10">10라운드 (표준)</button>
             <button class="setup-round" data-rounds="15">15라운드 (심화)</button>
           </div>
+          <div class="setup-counts round-count-select">
+            <button class="setup-round" data-rounds="0">무제한 · 파산할 때까지 🏦</button>
+          </div>
         </div>
 
         <div id="time-options-group" class="hidden">
@@ -52,6 +55,11 @@
         <div class="setup-section-label">플레이어 이름</div>
         <div id="name-fields" class="name-fields"></div>
         <button id="start-game" class="start-game">게임 시작하기 <span>↗</span></button>
+        <div style="margin-top: 14px; text-align: center;">
+          <a href="tutorial.html" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: #555; text-decoration: none; padding: 6px 14px; border: 1.5px solid var(--line); border-radius: 6px; background: #fff; transition: all .15s;">
+            📖 게임 방법 & 튜토리얼 보기 <span>↗</span>
+          </a>
+        </div>
       </div>
     </div>
 
@@ -188,7 +196,18 @@
                       </div>
                       <div class="die-shadow"></div>
                     </div>
-                    <span class="sum"><strong id="roll-sum">1</strong>칸</span>
+                    <div class="die-scene">
+                      <div id="die-two" class="die">
+                        <i class="die-face f1"></i>
+                        <i class="die-face f6"></i>
+                        <i class="die-face f3"></i>
+                        <i class="die-face f4"></i>
+                        <i class="die-face f5"></i>
+                        <i class="die-face f2"></i>
+                      </div>
+                      <div class="die-shadow"></div>
+                    </div>
+                    <span class="sum"><strong id="roll-sum">2</strong>칸</span>
                   </div>
                     <button id="roll-button" class="roll-button">
                       <span id="roll-btn-text">주사위 굴리기</span>
@@ -381,8 +400,8 @@
     </main>
 
 
-    <script src="worldmap.js?v=20260821_20"></script>
-    <script src="questions.js?v=20260821_20"></script>
-    <script src="script.js?v=20260821_20"></script>
+    <script src="worldmap.js?v=20260822_01"></script>
+    <script src="questions.js?v=20260822_01"></script>
+    <script src="script.js?v=20260822_01"></script>
   </body>
 </html>

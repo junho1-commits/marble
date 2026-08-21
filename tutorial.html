@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>교실 속 세계일주 | 튜토리얼 & 게임 설명서</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;700&family=Jua&family=Space+Grotesk:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #20231f;
+      --paper: #f5f1e9;
+      --card-bg: #fffdf7;
+      --line: #c9c3b7;
+      --orange: #ef6a43;
+      --yellow: #f4c84e;
+      --blue: #3f798f;
+      --green: #2e7d5e;
+      --mint: #a8c9b5;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: 'Space Grotesk', sans-serif;
+      line-height: 1.6;
+      padding: 20px 16px 60px;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    /* 헤더 */
+    header {
+      text-align: center;
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 2.5px solid var(--ink);
+    }
+    .badge {
+      display: inline-block;
+      background: var(--orange);
+      color: white;
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 10px;
+      border: 1.5px solid var(--ink);
+    }
+    h1 {
+      font-family: 'Jua', sans-serif;
+      font-size: clamp(32px, 5vw, 48px);
+      color: var(--orange);
+      text-shadow: 2px 2px 0 var(--ink);
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 16px;
+      color: #555;
+      font-weight: 600;
+    }
+
+    /* 상단 네비게이션 탭 */
+    .tab-nav {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+    }
+    .tab-btn {
+      flex: 1;
+      min-width: 140px;
+      padding: 12px 14px;
+      background: var(--card-bg);
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 3px 3px 0 var(--ink);
+      transition: all .15s;
+      white-space: nowrap;
+      text-align: center;
+    }
+    .tab-btn:hover {
+      background: var(--yellow);
+      transform: translateY(-2px);
+    }
+    .tab-btn.active {
+      background: var(--orange);
+      color: white;
+      box-shadow: 4px 4px 0 var(--ink);
+    }
+
+    /* 컨텐츠 카드 */
+    .tab-pane {
+      display: none;
+      animation: fadeIn .25s ease-in-out;
+    }
+    .tab-pane.active {
+      display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .guide-card {
+      background: var(--card-bg);
+      border: 2.5px solid var(--ink);
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 5px 5px 0 var(--ink);
+      margin-bottom: 22px;
+    }
+    .guide-card h2 {
+      font-family: 'Jua', sans-serif;
+      font-size: 24px;
+      color: var(--ink);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 2px dashed var(--line);
+      padding-bottom: 8px;
+    }
+    .guide-card h3 {
+      font-size: 18px;
+      color: var(--orange);
+      margin: 16px 0 8px;
+      font-weight: 800;
+    }
+
+    /* 단계별 스텝 박스 */
+    .step-list {
+      display: grid;
+      gap: 16px;
+    }
+    .step-item {
+      display: flex;
+      gap: 14px;
+      background: #fdfbf7;
+      border: 1.5px solid var(--ink);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .step-num {
+      flex: 0 0 36px;
+      width: 36px;
+      height: 36px;
+      background: var(--orange);
+      color: white;
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-family: 'DM Mono', monospace;
+      font-weight: 900;
+      font-size: 17px;
+    }
+    .step-body h4 {
+      font-size: 17px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+    .step-body p {
+      font-size: 14.5px;
+      color: #444;
+      line-height: 1.55;
+    }
+
+    /* 카드 그리드 */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+      margin-top: 12px;
+    }
+    .item-box {
+      background: white;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      padding: 14px;
+      box-shadow: 2px 2px 0 var(--ink);
+    }
+    .item-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .item-icon {
+      font-size: 24px;
+    }
+    .item-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--ink);
+    }
+    .item-tag {
+      font-size: 11px;
+      font-family: 'DM Mono', monospace;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+    .tag-keep { background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; }
+    .tag-instant { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+    .item-desc {
+      font-size: 13.5px;
+      color: #555;
+      line-height: 1.45;
+    }
+
+    /* 하이라이트 박스 */
+    .tip-box {
+      background: #eff6ff;
+      border: 2px solid #3b82f6;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-top: 14px;
+      font-size: 14px;
+      color: #1e3a8a;
+    }
+    .tip-box strong {
+      color: #1d4ed8;
+      display: block;
+      margin-bottom: 4px;
+      font-size: 15px;
+    }
+
+    /* 게임 시작 버튼 */
+    .play-btn-area {
+      text-align: center;
+      margin-top: 32px;
+    }
+    .play-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--orange);
+      color: white;
+      text-decoration: none;
+      padding: 16px 36px;
+      font-size: 20px;
+      font-family: 'Jua', sans-serif;
+      border: 2.5px solid var(--ink);
+      border-radius: 12px;
+      box-shadow: 5px 5px 0 var(--ink);
+      transition: all .15s;
+    }
+    .play-btn:hover {
+      background: var(--yellow);
+      color: var(--ink);
+      transform: scale(1.04);
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 13px;
+      color: #777;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <span class="badge">2022 개정 사회과 교육과정 연계</span>
+      <h1>교실 속 세계일주 튜토리얼</h1>
+      <p class="subtitle">주사위를 굴리고 퀴즈를 맞히며 세계 지리와 문화를 탐험하는 보드게임 가이드</p>
+    </header>
+
+    <!-- 네비게이션 탭 -->
+    <nav class="tab-nav">
+      <button class="tab-btn active" onclick="openTab('tab-start', this)">🏁 1. 게임 시작하기</button>
+      <button class="tab-btn" onclick="openTab('tab-turn', this)">🎲 2. 턴 진행 & 퀴즈</button>
+      <button class="tab-btn" onclick="openTab('tab-land', this)">🏰 3. 땅 매입 & 통행세</button>
+      <button class="tab-btn" onclick="openTab('tab-special', this)">🌿 4. 생태쉼터 & 특수칸</button>
+      <button class="tab-btn" onclick="openTab('tab-win', this)">🏆 5. 승리 & 파산 규칙</button>
+    </nav>
+
+    <!-- 1. 게임 시작하기 -->
+    <div id="tab-start" class="tab-pane active">
+      <div class="guide-card">
+        <h2>🏁 게임 인원 및 승리 모드 설정</h2>
+        <div class="step-list">
+          <div class="step-item">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <h4>참여 인원 선택 (1인 vs AI ~ 4인)</h4>
+              <p>혼자서 플레이할 때는 <strong>지구봇 AI</strong>와 1:1 대결을 펼칠 수 있으며, 친구들과 함께할 때는 2인, 3인, 4인 플레이를 선택하고 각자의 탐험가 이름을 입력합니다.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <h4>승리 종료 방식 선택</h4>
+              <p><strong>라운드제:</strong> 정해진 라운드(5, 10, 15라운드)를 모두 마쳤을 때 총자산이 가장 많은 사람이 우승합니다.<br>
+              <strong>시간 제한제 ⏱️:</strong> 수업 시간에 맞춰 3분, 5분, 10분 타이머를 설정하고 시간이 종료되었을 때 순위를 가립니다.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <h4>시작 자금 및 완주 월급</h4>
+              <p>모든 탐험가는 <strong>시작 자금 ₩350,000</strong>을 가지고 출발지에서 시작합니다. 보드를 한 바퀴 돌아 출발지를 통과할 때마다 <strong>월급 ₩70,000</strong>을 받습니다.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. 턴 진행 & 퀴즈 -->
+    <div id="tab-turn" class="tab-pane">
+      <div class="guide-card">
+        <h2>🎲 내 차례의 4단계 진행 순서</h2>
+        <div class="step-list">
+          <div class="step-item">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <h4>주사위 굴리기 [Space키 또는 버튼]</h4>
+              <p>보드 중앙의 <strong>[주사위 굴리기]</strong> 버튼을 누르면 1개의 3D 주사위가 회전하며 1~6칸의 이동 칸수가 결정됩니다.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <h4>탐험가 말의 1칸씩 점프 이동</h4>
+              <p>내 탐험가 말이 효과음과 함께 통통 튀며 주사위 눈만큼 보드판을 이동합니다. 출발지를 지날 때는 월급이 자동 지급됩니다.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <h4>지구본 회전 & 국가 정보 탐색</h4>
+              <p>말이 도착한 국가의 위치로 중앙의 <strong>3D 지구본이 회전</strong>하며 해당 나라의 기후, 지형, 문화 정보를 시각적으로 보여줍니다.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <h4>교과서 탐험 퀴즈 풀기 💡</h4>
+              <p>도착한 칸의 퀴즈가 대형 창으로 나타납니다. 3개의 보기 중 정답을 맞히면 <strong>탐험 수당 ₩5,000</strong>을 획득하고 땅을 살 수 있는 권리가 주어집니다!</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. 땅 매입 & 통행세 -->
+    <div id="tab-land" class="tab-pane">
+      <div class="guide-card">
+        <h2>🏰 땅 매입, 건물 증축 및 통행세 방어</h2>
+        <div class="step-list">
+          <div class="step-item">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <h4>빈 땅 매입하기</h4>
+              <p>주인이 없는 빈 땅에 도착해 퀴즈를 맞히면 <strong>[구매]</strong> 버튼을 눌러 내 땅으로 만들 수 있습니다. 내 소유가 된 땅에는 내 고유 색상의 테두리와 배지가 표시됩니다.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <h4>내 땅에 건물 증축하기 (1~3단계)</h4>
+              <p>이미 내가 가진 땅에 다시 도착하면 땅값의 50% 비용으로 건물을 올릴 수 있습니다. (🏠 1단계 → 🏘️ 2단계 → 🏰 3단계) 건물이 높아질수록 통행세가 강력해집니다!</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <h4>다른 사람 땅 도착 시: 통행세 퀴즈 & 할증 룰</h4>
+              <p>다른 플레이어의 땅에 도착하면 <strong>통행세 퀴즈</strong>가 출제됩니다.<br>
+              • <strong>정답 선택 시:</strong> 정상 통행세를 지불합니다.<br>
+              • <strong>오답 선택 시:</strong> 통행세에 <strong>1.2배(20% 할증)</strong>가 붙어 더 큰 금액을 지불해야 합니다!</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <h4>💸 현금 부족 시 긴급 토지 매각 시스템</h4>
+              <p>통행세를 낼 현금이 부족하면 <strong>[토지 매각 모달]</strong>이 열립니다. 내가 가진 다른 땅을 원가 100%로 매각하여 현금을 마련한 뒤 통행세를 내고 계속 플레이할 수 있습니다.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. 생태쉼터 & 특수칸 -->
+    <div id="tab-special" class="tab-pane">
+      <div class="guide-card">
+        <h2>🌿 생태 쉼터 보너스 카드 (8종)</h2>
+        <p>생태 쉼터 칸에 도착하면 환경 보호에 기여한 보답으로 아래 8장 중 1장의 카드를 무작위로 뽑습니다.</p>
+        
+        <div class="card-grid">
+          <div class="item-box">
+            <div class="item-header">
+              <span class="item-icon">🎫</span>
+              <span class="item-title">통행세 면제권</span>
+              <span class="item-tag tag-keep">보유형</span>
+            </div>
+            <p class="item-desc">다른 사람의 비싼 땅에 걸렸을 때 통행세를 1회 전액 면제받습니다. 위기 탈출의 최고 카드!</p>
+          </div>
+
+          <div class="item-box">
+            <div class="item-header">
+              <span class="item-icon">🏗️</span>
+              <span class="item-title">무료 증축권</span>
+              <span class="item-tag tag-keep">보유형</span>
+            </div>
+            <p class="item-desc">내 땅에 비용 없이 건물 1단계를 즉시 무료로 증축합니다. 통행세 수익을 크게 올립니다.</p>
+          </div>
+
+          <div class="item-box">
+            <div class="item-header">
+              <span class="item-icon">🏷️</span>
+              <span class="item-title">반값 매입권</span>
+              <span class="item-tag tag-keep">보유형</span>
+            </div>
+            <p class="item-desc">다음에 빈 땅을 살 때 토지 가격의 50%만 지불합니다. 고가 토지를 살 때 사용하면 유리합니다.</p>
+          </div>
+
+          <div class="item-box">
+            <div class="item-header">
+              <span class="item-icon">🚩</span>
+              <span class="item-title">출발지로 이동</span>
+              <span class="item-tag tag-instant">즉시형</span>
+            </div>
+            <p class="item-desc">즉시 출발지 칸으로 날아가며 완주 월급과 도착 보너스를 합쳐 총 ₩100,000을 획득합니다.</p>
+          </div>
+
+          <div class="item-box">
+            <div class="item-header">
+              <span class="item-icon">✈️</span>
+              <span class="item-title">세계 어디든 이동</span>
+              <span class="item-tag tag-instant">즉시형</span>
+            </div>
+            <p class="item-desc">원하는 국가를 직접 골라 즉시 날아갑니다. 빈 땅을 선점하거나 안전한 본인 땅으로 이동할 수 있습니다.</p>
+          </div>
+
+          <div class="item-box">
+            <div class="item-header">
+              <span class="item-icon">💰</span>
+              <span class="item-title">환경 장학금</span>
+              <span class="item-tag tag-instant">즉시형</span>
+            </div>
+            <p class="item-desc">지구를 지킨 환경 장학금 ₩40,000을 즉시 지급받아 현금을 확보합니다.</p>
+          </div>
+
+          <div class="item-box">
+            <div class="item-header">
+              <span class="item-icon">🎲</span>
+              <span class="item-title">한 번 더 굴리기</span>
+              <span class="item-tag tag-instant">즉시형</span>
+            </div>
+            <p class="item-desc">이번 턴에 주사위를 연속으로 한 번 더 굴릴 수 있는 특별한 기회를 얻습니다.</p>
+          </div>
+
+          <div class="item-box">
+            <div class="item-header">
+              <span class="item-icon">🌳</span>
+              <span class="item-title">숲 보호 보너스</span>
+              <span class="item-tag tag-instant">즉시형</span>
+            </div>
+            <p class="item-desc">현재 내가 소유한 땅 1곳당 ₩12,000씩 환경 지원금을 받습니다. (5곳 보유 시 ₩60,000)</p>
+          </div>
+        </div>
+
+        <div class="tip-box">
+          <strong>🌍 기후 퀴즈 & ⛰️ 지형 퀴즈 특수칸</strong>
+          기후/지형 특수칸에 도착하면 심화 퀴즈가 출제되며, 문제를 맞히면 탐험 장학금 <strong>₩30,000</strong>을 획득합니다.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. 승리 & 파산 규칙 -->
+    <div id="tab-win" class="tab-pane">
+      <div class="guide-card">
+        <h2>🏆 승리 판정 및 파산 처리 규칙</h2>
+        <div class="step-list">
+          <div class="step-item">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <h4>최종 우승자 결정: 총자산 1위</h4>
+              <p>설정한 목표 라운드(예: 10라운드)를 완료하거나 제한 시간이 끝났을 때, <strong>[보유 현금 + 소유 토지 및 건물 가치]를 합산한 총자산이 가장 많은 탐험가</strong>가 최종 우승 트로피를 차지합니다.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <h4>파산 및 탈락 룰</h4>
+              <p>통행세를 낼 돈이 부족하고 더 이상 팔 땅이 없는 플레이어는 파산 처리되어 게임에서 탈락합니다. 파산한 플레이어의 땅과 남은 돈은 통행세를 받아야 할 채권자에게 모두 넘어갑니다.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <h4>최후의 1인 생존 승리</h4>
+              <p>다인 플레이 중 다른 모든 플레이어가 파산하고 <strong>마지막 1명만 생존한 경우</strong>, 목표 라운드와 상관없이 그 즉시 최후의 생존자가 게임에서 승리합니다.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 게임하러 가기 링크 버튼 -->
+    <div class="play-btn-area">
+      <a href="index.html" class="play-btn">🚀 &lt;교실 속 세계일주&gt; 게임 플레이하러 가기</a>
+    </div>
+
+    <footer>
+      제작 : 모덕초 조준호 | 2022 개정 초등 6학년 사회과 교육과정 연계 에듀테크
+    </footer>
+  </div>
+
+  <script>
+    function openTab(tabId, btn) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      btn.classList.add('active');
+    }
+  </script>
+</body>
+</html>

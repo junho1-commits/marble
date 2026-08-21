@@ -707,14 +707,15 @@ button { font: inherit; }
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
   margin-top: 2px;
 }
 
+/* 주사위 두 개 + 합계 표시가 한 줄에 들어가야 해서 간격을 좁게 잡는다 */
 .single-die-wrapper {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 /* ============================================================
@@ -722,8 +723,9 @@ button { font: inherit; }
    ============================================================ */
 .die-scene {
   position: relative;
-  width: clamp(50px, 6.8vh, 92px);
-  height: clamp(50px, 6.8vh, 92px);
+  /* 두 개가 나란히 서므로 하나짜리였을 때보다 작게 잡는다 */
+  width: clamp(40px, 5.6vh, 72px);
+  height: clamp(40px, 5.6vh, 72px);
   /* 위에서 내려다보는 시점. 기울기는 script.js의 DIE_TILT 가 담당한다 */
   perspective: 520px;
   perspective-origin: 50% 40%;

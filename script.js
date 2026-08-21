@@ -4,7 +4,7 @@
 const board = document.querySelector('#board');
 const rollButton = document.querySelector('#roll-button');
 const rollBtnText = document.querySelector('#roll-btn-text');
-const dieOne = document.querySelector('#die-one');
+const diceElements = [document.querySelector('#die-one'), document.querySelector('#die-two')].filter(Boolean);
 const rollSum = document.querySelector('#roll-sum');
 const timer = document.querySelector('#timer');
 const roundNumber = document.querySelector('#round-number');
@@ -66,7 +66,7 @@ const timeOptionsGroup = document.querySelector('#time-options-group');
 
 let selectedPlayerCount = 2;
 let gameMode = 'round'; // 'round' 또는 'time'
-let targetMaxRounds = 10;
+let targetMaxRounds = 10;       // 0이면 무제한 — 파산으로 한 명만 남을 때까지 계속합니다.
 let targetTimeMinutes = 5;
 let remainingSeconds = 300;
 let elapsedSeconds = 0;
@@ -81,6 +81,15 @@ let timerInterval = null;
 let extraRollPending = false;    // '한 번 더 굴리기' 카드
 let pendingPurchaseDiscount = 1; // '반값 매입권' 적용 여부
 let afterQuizAction = null;      // 퀴즈 확인 버튼을 눌렀을 때 이어서 할 일
+
+// 라운드 수를 정하지 않은 '무제한' 모드인지
+function isUnlimitedRounds() { return gameMode === 'round' && targetMaxRounds === 0; }
+
+// 화면에 표시할 라운드 글자 (무제한이면 목표치로 자르지 않습니다)
+function roundLabel() {
+  return isUnlimitedRounds() ? String(currentRound).padStart(2, '0')
+                             : String(Math.min(currentRound, targetMaxRounds)).padStart(2, '0');
+}
 
 const startingMoney = 350000;    // 초기 자금
 const salaryBonus = 70000;       // 출발지 통과 월급
@@ -284,7 +293,7 @@ const BONUS_CARDS = [
   { id: 'go-start', icon: '🚩', name: '출발지로 이동', keep: false,
     desc: '지금 바로 출발지로 이동하고 월급 ₩70,000을 받습니다.' },
   { id: 'go-anywhere', icon: '✈️', name: '세계 어디든 이동', keep: false,
-    desc: '가고 싶은 나라를 골라 그곳으로 바로 이동합니다. 빈 땅이면 퀴즈를 풀고 살 수 있습니다.' },
+    desc: '가고 싶은 나라를 골라 그곳으로 바로 이동합니다. 빈 땅이면 퀴즈를 풀고 살 수 있습니다. 가는 길에 출발지를 지나면 월급도 받습니다.' },
   { id: 'scholarship', icon: '💰', name: '환경 장학금', keep: false,
     desc: '지구를 지킨 보답으로 ₩40,000을 받습니다.' },
   { id: 'one-more', icon: '🎲', name: '한 번 더 굴리기', keep: false,
@@ -366,74 +375,236 @@ let globeTargetLon = 120, globeTargetLat = 15;
 let globeMarker = null;                 // { lat, lon, name }
 let globeAnim = null;
 
-const landRings = (typeof WORLD_LAND === 'string' ? WORLD_LAND : '')
-  .split(';').filter(Boolean)
-  .map(r => r.split(',').map(pt => { const [a, b] = pt.split(' '); return [Number(a), Number(b)]; }));
-
 const rad = d => d * Math.PI / 180;
 
-// 위경도를 화면 좌표로. 지구 뒤편이면 visible=false
-function project(lat, lon) {
-  const p = rad(lat), l = rad(lon - globeLon), c0 = rad(globeLat);
-  const cosC = Math.sin(c0) * Math.sin(p) + Math.cos(c0) * Math.cos(p) * Math.cos(l);
+// 위경도를 3차원 단위벡터로 바꾼다. 회전할 때마다 삼각함수를 다시 계산하지 않도록
+// 해안선·위경선 좌표는 처음 한 번만 벡터로 만들어 두고, 매 프레임에는 곱셈만 한다.
+function vecOf(lat, lon) {
+  const p = rad(lat), l = rad(lon);
+  return [Math.cos(p) * Math.cos(l), Math.cos(p) * Math.sin(l), Math.sin(p)];
+}
+
+// 고리가 어느 쪽으로 감겨 있는지 (구면 부호 면적). 양수면 땅, 음수면 땅에 뚫린
+// 호수(카스피해)입니다. 감긴 방향은 가장자리를 이어 붙일 때 어느 쪽으로 돌지 정합니다.
+function ringSignedArea(points) {
+  let sum = 0, lon0 = null, cosHalf0 = 1, sinHalf0 = 0;
+  points.forEach(([lon, lat]) => {
+    const l = rad(lon), half = rad(lat) / 2 + Math.PI / 4;
+    const sinHalf = Math.sin(half), cosHalf = Math.cos(half);
+    if (lon0 !== null) {
+      const dl = l - lon0, sign = dl >= 0 ? 1 : -1, adl = sign * dl;
+      const k = sinHalf0 * sinHalf;
+      sum += Math.atan2(k * sign * Math.sin(adl), cosHalf0 * cosHalf + k * Math.cos(adl));
+    }
+    lon0 = l; cosHalf0 = cosHalf; sinHalf0 = sinHalf;
+  });
+  return 2 * sum;
+}
+
+const landRings = (typeof WORLD_LAND === 'string' ? WORLD_LAND : '')
+  .split(';').filter(Boolean)
+  .map((r) => {
+    const pts = r.split(',').map(pt => { const [lon, lat] = pt.split(' '); return [Number(lon), Number(lat)]; });
+    return { vecs: pts.map(([lon, lat]) => vecOf(lat, lon)), hole: ringSignedArea(pts) < 0 };
+  })
+  .sort((a, b) => Number(a.hole) - Number(b.hole));   // 호수는 대륙 위에 덧그린다
+
+// 위선 · 경선 · 적도 · 회귀선도 미리 벡터로 만들어 둔다
+function ringOfLat(lat) { const v = []; for (let lon = -180; lon <= 180; lon += 3) v.push(vecOf(lat, lon)); return v; }
+function ringOfLon(lon) { const v = []; for (let lat = -90; lat <= 90; lat += 3) v.push(vecOf(lat, lon)); return v; }
+const parallels = [-60, -30, 30, 60].map(ringOfLat);
+const meridians = []; for (let lon = -180; lon < 180; lon += 30) meridians.push(ringOfLon(lon));
+const tropics = [23.5, -23.5].map(ringOfLat);
+const equator = ringOfLat(0);
+
+// 현재 보고 있는 방향의 회전 계수 (drawGlobe 첫머리에서 갱신)
+let viewCosLon = 1, viewSinLon = 0, viewCosLat = 1, viewSinLat = 0;
+
+// 정사영 도법. cosC가 0보다 작으면 지구 뒤편이라 보이지 않는다.
+function projectVec(v) {
+  const east  = v[1] * viewCosLon - v[0] * viewSinLon;   // 중심 경선 기준 동서 성분
+  const front = v[0] * viewCosLon + v[1] * viewSinLon;   // 중심 경선 방향 성분
   return {
-    x: GLOBE_CX + GLOBE_R * Math.cos(p) * Math.sin(l),
-    y: GLOBE_CY - GLOBE_R * (Math.cos(c0) * Math.sin(p) - Math.sin(c0) * Math.cos(p) * Math.cos(l)),
-    visible: cosC >= 0
+    x: GLOBE_CX + GLOBE_R * east,
+    y: GLOBE_CY - GLOBE_R * (viewCosLat * v[2] - viewSinLat * front),
+    cosC: viewSinLat * v[2] + viewCosLat * front
   };
 }
 
-// 앞면에 보이는 구간만 이어서 path 문자열로
-function arcPath(points, close) {
-  let d = '', pen = false;
-  points.forEach(([lat, lon]) => {
-    const q = project(lat, lon);
-    if (!q.visible) { pen = false; return; }
-    d += (pen ? 'L' : 'M') + q.x.toFixed(1) + ' ' + q.y.toFixed(1);
-    pen = true;
-  });
-  return d && close ? d + 'Z' : d;
+// 보이는 점과 안 보이는 점 사이에서 '지구 가장자리'를 이분법으로 찾는다.
+// 이렇게 해야 선이 테두리에 딱 붙어 끊기고, 가장자리 앞에서 미리 잘리지 않는다.
+function limbBetween(visibleVec, hiddenVec) {
+  let a = visibleVec, b = hiddenVec;
+  for (let i = 0; i < 14; i += 1) {
+    let mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, mz = (a[2] + b[2]) / 2;
+    const len = Math.hypot(mx, my, mz) || 1;
+    const m = [mx / len, my / len, mz / len];
+    if (projectVec(m).cosC >= 0) a = m; else b = m;
+  }
+  // 이어 붙일 호와 정확히 맞물리도록 반지름을 가장자리에 맞춘다
+  const q = projectVec(a);
+  const dx = q.x - GLOBE_CX, dy = q.y - GLOBE_CY;
+  const len = Math.hypot(dx, dy) || 1;
+  return { x: GLOBE_CX + dx / len * GLOBE_R, y: GLOBE_CY + dy / len * GLOBE_R, cosC: 0 };
+}
+
+// 위경선처럼 '이어진 선'을 그린다. 뒤편 구간은 건너뛰되 가장자리에서 정확히 끊는다.
+function linePath(vecs) {
+  let d = '', pen = false, prev = null, prevVisible = false;
+  const at = (q) => `${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
+
+  for (let i = 0; i < vecs.length; i += 1) {
+    const v = vecs[i];
+    const q = projectVec(v);
+    const visible = q.cosC >= 0;
+
+    if (visible && !pen) {
+      if (prev && !prevVisible) d += `M${at(limbBetween(v, prev))}L${at(q)}`;  // 가장자리에서 시작
+      else d += `M${at(q)}`;
+      pen = true;
+    } else if (visible) {
+      d += `L${at(q)}`;
+    } else if (pen) {
+      d += `L${at(limbBetween(prev, v))}`;                                     // 가장자리에서 끝
+      pen = false;
+    }
+    prev = v; prevVisible = visible;
+  }
+  return d;
+}
+
+// 대륙 한 덩어리를 채워진 다각형으로 그린다.
+//
+// 뒤편으로 넘어간 점을 그냥 건너뛰면 다각형이 조각나면서 대륙 사이를 가로지르는
+// 직선이 생기고, 조각들의 회전 방향이 엇갈려 땅이 통째로 사라지거나 바다가 땅으로
+// 칠해진다(남극 대륙처럼 지구를 한 바퀴 도는 덩어리에서 특히 심하다).
+// 그래서 앞면에 보이는 구간만 잘라 내고, 잘린 자리끼리는 '지구 가장자리를 따라'
+// 이어 붙여 다시 닫힌 도형으로 만든다.
+const TWO_PI = Math.PI * 2;
+
+function limbAngle(q) { return Math.atan2(q.y - GLOBE_CY, q.x - GLOBE_CX); }
+function xy(q) { return `${q.x.toFixed(1)} ${q.y.toFixed(1)}`; }
+
+function landPath(ringData) {
+  const ring = ringData.vecs;
+  const limbDir = ringData.hole ? -1 : 1;   // 감긴 방향에 맞춰 가장자리를 돈다
+  const n = ring.length;
+  const proj = new Array(n);
+  let visibleCount = 0;
+  for (let i = 0; i < n; i += 1) {
+    proj[i] = projectVec(ring[i]);
+    if (proj[i].cosC >= 0) visibleCount += 1;
+  }
+
+  if (visibleCount === 0) return '';                    // 통째로 지구 뒤편
+
+  if (visibleCount === n) {                             // 통째로 앞면 — 그대로 그린다
+    let d = '';
+    for (let i = 0; i < n; i += 1) d += (i ? 'L' : 'M') + xy(proj[i]);
+    return d + 'Z';
+  }
+
+  // 뒤편에서 앞면으로 넘어오는 지점을 시작으로 잡아야 조각이 깔끔하게 나뉜다
+  let startIndex = 0;
+  for (let i = 0; i < n; i += 1) {
+    if (proj[i].cosC >= 0 && proj[(i - 1 + n) % n].cosC < 0) { startIndex = i; break; }
+  }
+
+  // 앞면에 보이는 구간(조각)들을 모은다. 조각의 처음과 끝은 지구 가장자리 위의 점이다.
+  const pieces = [];
+  let piece = null;
+  for (let k = 0; k < n; k += 1) {
+    const i = (startIndex + k) % n;
+    const prev = (i - 1 + n) % n;
+    const visible = proj[i].cosC >= 0;
+    const prevVisible = proj[prev].cosC >= 0;
+
+    if (visible && !prevVisible) { piece = [limbBetween(ring[i], ring[prev]), proj[i]]; pieces.push(piece); }
+    else if (visible && piece) { piece.push(proj[i]); }
+    else if (!visible && prevVisible && piece) { piece.push(limbBetween(ring[prev], ring[i])); piece = null; }
+  }
+  if (piece && piece.length) piece.push(limbBetween(ring[(startIndex - 1 + n) % n], ring[startIndex]));
+
+  if (!pieces.length) return '';
+
+  const inAngle = pieces.map(pt => limbAngle(pt[0]));
+  const outAngle = pieces.map(pt => limbAngle(pt[pt.length - 1]));
+  const used = new Array(pieces.length).fill(false);
+  let d = '';
+
+  for (let seed = 0; seed < pieces.length; seed += 1) {
+    if (used[seed]) continue;
+
+    let index = seed, first = true;
+    while (!used[index]) {
+      used[index] = true;
+      pieces[index].forEach((q, i) => { d += (first && i === 0 ? 'M' : 'L') + xy(q); });
+      first = false;
+
+      // 가장자리를 따라 한 방향으로 돌다가 처음 만나는 조각의 시작점으로 잇는다
+      let next = index, sweep = Infinity;
+      for (let j = 0; j < pieces.length; j += 1) {
+        let delta = ((inAngle[j] - outAngle[index]) * limbDir) % TWO_PI;
+        if (delta < 0) delta += TWO_PI;
+        if (delta < sweep) { sweep = delta; next = j; }
+      }
+
+      const steps = Math.max(1, Math.ceil(sweep / (Math.PI / 60)));   // 호를 3도씩 잘라 잇는다
+      for (let t = 1; t <= steps; t += 1) {
+        const a = outAngle[index] + limbDir * sweep * (t / steps);
+        d += `L${(GLOBE_CX + GLOBE_R * Math.cos(a)).toFixed(1)} ${(GLOBE_CY + GLOBE_R * Math.sin(a)).toFixed(1)}`;
+      }
+      index = next;
+    }
+    d += 'Z';
+  }
+
+  return d;
 }
 
 function drawGlobe() {
   if (!globeSvg) return;
+
+  viewCosLon = Math.cos(rad(globeLon)); viewSinLon = Math.sin(rad(globeLon));
+  viewCosLat = Math.cos(rad(globeLat)); viewSinLat = Math.sin(rad(globeLat));
+
   const parts = [];
 
   // 바다
   parts.push(`<circle cx="${GLOBE_CX}" cy="${GLOBE_CY}" r="${GLOBE_R}" fill="url(#seaGrad)"/>`);
 
-  // 대륙
-  let land = '';
-  landRings.forEach(ring => { land += arcPath(ring.map(([lon, lat]) => [lat, lon]), true); });
-  parts.push(`<path d="${land}" fill="#7fa87f" stroke="#4d7350" stroke-width="0.5" stroke-linejoin="round"/>`);
+  // 대륙 — 덩어리마다 따로 그린다. 하나의 path에 몰아넣으면 겹친 부분이
+  // 서로 상쇄되어 구멍이 뚫린 것처럼 보인다.
+  landRings.forEach((ring) => {
+    const d = landPath(ring);
+    if (!d) return;
+    const fill = ring.hole ? 'url(#seaGrad)' : '#7fa87f';   // 카스피해 같은 내륙호는 바다색으로 덮는다
+    parts.push(`<path d="${d}" fill="${fill}" stroke="#4d7350" stroke-width="0.5" stroke-linejoin="round"/>`);
+  });
 
-  // 위선 (30도 간격) — 적도와 회귀선은 따로 강조
-  for (let lat = -60; lat <= 60; lat += 30) {
-    if (lat === 0) continue;
-    const pts = []; for (let lon = -180; lon <= 180; lon += 4) pts.push([lat, lon]);
-    parts.push(`<path d="${arcPath(pts)}" fill="none" stroke="rgba(255,255,255,.32)" stroke-width="0.5"/>`);
-  }
+  // 위선 (30도 간격)
+  parallels.forEach((pts) => {
+    const d = linePath(pts);
+    if (d) parts.push(`<path d="${d}" fill="none" stroke="rgba(255,255,255,.32)" stroke-width="0.5"/>`);
+  });
   // 경선 (30도 간격)
-  for (let lon = -180; lon < 180; lon += 30) {
-    const pts = []; for (let lat = -90; lat <= 90; lat += 4) pts.push([lat, lon]);
-    parts.push(`<path d="${arcPath(pts)}" fill="none" stroke="rgba(255,255,255,.32)" stroke-width="0.5"/>`);
-  }
+  meridians.forEach((pts) => {
+    const d = linePath(pts);
+    if (d) parts.push(`<path d="${d}" fill="none" stroke="rgba(255,255,255,.32)" stroke-width="0.5"/>`);
+  });
   // 북회귀선 / 남회귀선 (23.5도)
-  [23.5, -23.5].forEach(lat => {
-    const pts = []; for (let lon = -180; lon <= 180; lon += 4) pts.push([lat, lon]);
-    parts.push(`<path d="${arcPath(pts)}" fill="none" stroke="#f4c84e" stroke-width="0.8" stroke-dasharray="3 2.5" opacity=".85"/>`);
+  tropics.forEach((pts) => {
+    const d = linePath(pts);
+    if (d) parts.push(`<path d="${d}" fill="none" stroke="#f4c84e" stroke-width="0.8" stroke-dasharray="3 2.5" opacity=".85"/>`);
   });
   // 적도
-  const eq = []; for (let lon = -180; lon <= 180; lon += 4) eq.push([0, lon]);
-  parts.push(`<path d="${arcPath(eq)}" fill="none" stroke="#ef6a43" stroke-width="1.4"/>`);
-
-  // 가장자리
-  parts.push(`<circle cx="${GLOBE_CX}" cy="${GLOBE_CY}" r="${GLOBE_R}" fill="none" stroke="rgba(32,35,31,.5)" stroke-width="1.2"/>`);
+  const eqD = linePath(equator);
+  if (eqD) parts.push(`<path d="${eqD}" fill="none" stroke="#ef6a43" stroke-width="1.4"/>`);
 
   // 현재 칸 표시 (반짝임)
   if (globeMarker) {
-    const q = project(globeMarker.lat, globeMarker.lon);
-    if (q.visible) {
+    const q = projectVec(vecOf(globeMarker.lat, globeMarker.lon));
+    if (q.cosC >= 0) {
       parts.push(`<circle cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" r="7" fill="none" stroke="#ef6a43" stroke-width="1.6" class="globe-ping"/>`);
       parts.push(`<circle cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" r="3.2" fill="#ef6a43" stroke="#fffdf7" stroke-width="1.2"/>`);
     }
@@ -446,8 +617,12 @@ function drawGlobe() {
         <stop offset="65%" stop-color="#8fbcd4"/>
         <stop offset="100%" stop-color="#5b8ba6"/>
       </radialGradient>
+      <clipPath id="globeClip">
+        <circle cx="${GLOBE_CX}" cy="${GLOBE_CY}" r="${GLOBE_R}"/>
+      </clipPath>
     </defs>
-    <g class="globe-body">${parts.join('')}</g>`;
+    <g class="globe-body" clip-path="url(#globeClip)">${parts.join('')}</g>
+    <circle cx="${GLOBE_CX}" cy="${GLOBE_CY}" r="${GLOBE_R}" fill="none" stroke="rgba(32,35,31,.5)" stroke-width="1.2"/>`;
 }
 
 // 목표 지점이 정면으로 오도록 부드럽게 회전
@@ -755,7 +930,7 @@ function checkGameOver(reason = 'round') {
 
   const alive = alivePlayers();
   const endByLastMan = gamePlayers.length > 1 && alive.length <= 1;
-  const endByRound = gameMode === 'round' && currentRound > targetMaxRounds;
+  const endByRound = gameMode === 'round' && targetMaxRounds > 0 && currentRound > targetMaxRounds;
   const endByTime = gameMode === 'time' && reason === 'time';
   if (!endByLastMan && !endByRound && !endByTime) return false;
 
@@ -767,7 +942,7 @@ function checkGameOver(reason = 'round') {
 
   if (endByLastMan) {
     gameOverTitle.textContent = '🏁 최후의 탐험가!';
-    gameOverDesc.textContent = `${alive[0] ? alive[0].name : '아무도'} 님을 남기고 모두 파산했습니다. 최종 자산 순위입니다.`;
+    gameOverDesc.textContent = `${currentRound}라운드 만에 ${alive[0] ? alive[0].name : '아무도'} 님을 남기고 모두 파산했습니다. 최종 자산 순위입니다.`;
   } else if (endByTime) {
     gameOverTitle.textContent = '⏱️ 제한 시간 종료!';
     gameOverDesc.textContent = `설정된 ${targetTimeMinutes}분의 탐험 시간이 모두 끝났습니다! 최종 자산 순위입니다.`;
@@ -814,7 +989,7 @@ function endTurn() {
   if (next === -1) { checkGameOver('last'); return; }
   if (next <= currentPlayerIndex) {
     currentRound += 1;
-    roundNumber.textContent = String(Math.min(currentRound, targetMaxRounds)).padStart(2, '0');
+    roundNumber.textContent = roundLabel();
   }
   currentPlayerIndex = next;
 
@@ -1145,9 +1320,10 @@ function applyBonusCard(playerIndex, card) {
         desc: '가고 싶은 나라를 고르면 그곳으로 바로 이동합니다. 도착한 곳에서는 평소처럼 퀴즈를 풀거나 통행세를 냅니다.',
         choices: targets.map(t => ({
           label: `${t.s.symbol} ${t.s.name}`,
-          sub: propertyState[t.i].owner === null
+          sub: (propertyState[t.i].owner === null
             ? `빈 땅 · ${won(t.s.cost)}`
-            : `${gamePlayers[propertyState[t.i].owner].name}의 땅 · 통행세 ${won(tollOf(t.i))}`,
+            : `${gamePlayers[propertyState[t.i].owner].name}의 땅 · 통행세 ${won(tollOf(t.i))}`)
+            + (passesStart(player.position, t.i) ? ` · 출발지 경유 월급 +${won(salaryBonus)}` : ''),
           onClick: () => teleportTo(playerIndex, t.i)
         }))
       });
@@ -1181,12 +1357,26 @@ function applyBonusCard(playerIndex, card) {
   }
 }
 
+// 말은 언제나 앞으로만 갑니다. 목적지 번호가 지금 칸보다 뒤라면 판을 한 바퀴 돌아
+// 출발지(0번 칸)를 지나가게 되므로, 걸어갈 때와 똑같이 월급을 받아야 합니다.
+function passesStart(fromIndex, toIndex) {
+  return toIndex <= fromIndex;
+}
+
 function teleportTo(playerIndex, spaceIndex) {
   const player = gamePlayers[playerIndex];
+  const passedStart = passesStart(player.position, spaceIndex);
   removePlayerPiece(playerIndex, player.position);
   player.position = spaceIndex;
   renderPlayerPiece(playerIndex, spaceIndex);
   showToast('✈️', `<b>${player.name}</b> 님이 <b>${spaces[spaceIndex].name}</b>(으)로 날아갔습니다.`, 'info');
+
+  if (passedStart) {
+    player.money += salaryBonus;
+    sounds.playCoin();
+    showToast('💵', `가는 길에 출발지를 지나 월급 <b>${won(salaryBonus)}</b>을 받았습니다.`, 'good');
+  }
+
   updateGlobeForSpace(spaces[spaceIndex]);
   updateAllRows();
   setTimeout(() => resolveLanding(playerIndex), 400 + globePauseFor(spaces[spaceIndex]));
@@ -1505,6 +1695,7 @@ async function movePlayerStepByStep(playerIndex, steps) {
 // 각 눈이 윗면으로 오는 회전각을 정해 두고, 여러 바퀴 돈 뒤 그 각도에 정확히 착지시킵니다.
 // 면 배치: 1-6, 2-5, 3-4 가 서로 마주 봅니다(합이 7).
 // ============================================================
+// 주사위는 두 개를 굴리고, 두 눈의 합만큼 움직입니다 (2~12칸).
 // 주사위 각 면에 눈(점)을 그린다. 숫자 대신 점을 써서 진짜 주사위처럼 보이게 한다.
 const PIP_LAYOUT = {
   1: [4],
@@ -1516,16 +1707,18 @@ const PIP_LAYOUT = {
 };
 
 (function drawDiePips() {
-  for (let v = 1; v <= 6; v += 1) {
-    const face = dieOne.querySelector('.f' + v);
-    if (!face) continue;
-    if (v === 1) face.classList.add('pip-red');   // 1은 빨간 눈 (전통 주사위)
-    let html = '';
-    for (let i = 0; i < 9; i += 1) {
-      html += PIP_LAYOUT[v].includes(i) ? '<span class="die-pip"><i></i></span>' : '<span class="die-pip"></span>';
+  diceElements.forEach((die) => {
+    for (let v = 1; v <= 6; v += 1) {
+      const face = die.querySelector('.f' + v);
+      if (!face) continue;
+      if (v === 1) face.classList.add('pip-red');   // 1은 빨간 눈 (전통 주사위)
+      let html = '';
+      for (let i = 0; i < 9; i += 1) {
+        html += PIP_LAYOUT[v].includes(i) ? '<span class="die-pip"><i></i></span>' : '<span class="die-pip"></span>';
+      }
+      face.innerHTML = html;
     }
-    face.innerHTML = html;
-  }
+  });
 })();
 
 // 면 배치(CSS): f1=앞, f6=뒤, f2=위, f5=아래, f3=오른쪽, f4=왼쪽
@@ -1541,25 +1734,30 @@ const DIE_LANDING = {
 
 // 카메라를 위쪽으로 올려 윗면이 보이게 하는 고정 기울기
 const DIE_TILT = -58;
-let dieSpinX = 0, dieSpinY = 0;   // 지금까지 누적된 회전(도)
+// 주사위마다 지금까지 누적된 회전(도)을 따로 기억한다
+const dieSpins = diceElements.map(() => ({ x: 0, y: 0 }));
 
-function applyDieTransform() {
-  dieOne.style.transform = `rotateX(${DIE_TILT + dieSpinX}deg) rotateY(${dieSpinY}deg)`;
+function applyDieTransform(dieIndex) {
+  const spin = dieSpins[dieIndex];
+  diceElements[dieIndex].style.transform = `rotateX(${DIE_TILT + spin.x}deg) rotateY(${spin.y}deg)`;
 }
 
-function setDieFace(value, spins) {
+function setDieFace(dieIndex, value, spins) {
   const land = DIE_LANDING[value];
   const turns = spins || 0;
+  const spin = dieSpins[dieIndex];
   // 현재 각도보다 앞쪽에 있는, 착지각과 360도 배수만큼 떨어진 지점으로 보낸다
-  dieSpinX = land.x + 360 * (Math.floor((dieSpinX - land.x) / 360) + turns + 1);
-  dieSpinY = land.y + 360 * (Math.floor((dieSpinY - land.y) / 360) + turns + 1);
-  applyDieTransform();
+  spin.x = land.x + 360 * (Math.floor((spin.x - land.x) / 360) + turns + 1);
+  spin.y = land.y + 360 * (Math.floor((spin.y - land.y) / 360) + turns + 1);
+  applyDieTransform(dieIndex);
 }
 
 // 어떤 눈이 윗면에 있는지 되돌려 준다 (검증용)
-function currentDieTopFace() {
-  const nx = ((dieSpinX % 360) + 360) % 360;
-  const ny = ((dieSpinY % 360) + 360) % 360;
+function currentDieTopFace(dieIndex = 0) {
+  const spin = dieSpins[dieIndex];
+  if (!spin) return null;
+  const nx = ((spin.x % 360) + 360) % 360;
+  const ny = ((spin.y % 360) + 360) % 360;
   for (const v of [1, 2, 3, 4, 5, 6]) {
     const L = DIE_LANDING[v];
     if (((L.x % 360) + 360) % 360 === nx && ((L.y % 360) + 360) % 360 === ny) return v;
@@ -1567,23 +1765,26 @@ function currentDieTopFace() {
   return null;
 }
 
-setDieFace(1, 0);
+diceElements.forEach((_, i) => setDieFace(i, 1, 0));
 
 function triggerDiceRoll() {
   if (!gamePlayers.length || isGameFinished || isMoving) return;
   rollButton.disabled = true;
   sounds.playRoll();
 
-  const finalRoll = Math.ceil(Math.random() * 6);
-  dieOne.classList.add('is-tumbling');
-  setDieFace(finalRoll, 2 + Math.floor(Math.random() * 2));
+  const eyes = diceElements.map(() => Math.ceil(Math.random() * 6));
+  const finalRoll = eyes.reduce((sum, v) => sum + v, 0);
+
+  diceElements.forEach((die, i) => {
+    die.classList.add('is-tumbling');
+    setDieFace(i, eyes[i], 2 + Math.floor(Math.random() * 2));
+  });
 
   setTimeout(() => {
-    dieOne.classList.remove('is-tumbling');
-    dieOne.classList.add('is-landing');
+    diceElements.forEach((die) => { die.classList.remove('is-tumbling'); die.classList.add('is-landing'); });
     rollSum.textContent = finalRoll;
-    addActivityLog(`🎲 ${gamePlayers[currentPlayerIndex].name} 주사위 ${finalRoll}`);
-    setTimeout(() => dieOne.classList.remove('is-landing'), 320);
+    addActivityLog(`🎲 ${gamePlayers[currentPlayerIndex].name} 주사위 ${eyes.join(' + ')} = ${finalRoll}`);
+    setTimeout(() => diceElements.forEach((die) => die.classList.remove('is-landing')), 320);
     setTimeout(() => movePlayerStepByStep(currentPlayerIndex, finalRoll), 380);
   }, 1000);
 }
@@ -1689,8 +1890,10 @@ function createPlayers(playerConfigs) {
   if (playerCountNum) playerCountNum.textContent = `${gamePlayers.length}명 참여 중`;
 
   if (gameMode === 'round') {
-    if (maxRoundText) maxRoundText.textContent = String(targetMaxRounds);
-    if (targetRuleDisplay) targetRuleDisplay.textContent = `목표: ${targetMaxRounds}라운드`;
+    if (maxRoundText) maxRoundText.textContent = isUnlimitedRounds() ? '∞' : String(targetMaxRounds);
+    if (targetRuleDisplay) targetRuleDisplay.textContent = isUnlimitedRounds()
+      ? '목표: 무제한 (마지막 한 명까지)' : `목표: ${targetMaxRounds}라운드`;
+    if (roundNumber) roundNumber.textContent = roundLabel();
     if (roundCaptionBox) roundCaptionBox.style.display = 'inline-block';
   } else {
     if (targetRuleDisplay) targetRuleDisplay.textContent = `목표: ${targetTimeMinutes}분 타임어택`;
