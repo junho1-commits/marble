@@ -1,0 +1,10 @@
+# 자료용 PDF는 용량이 커서 저장소에 올리지 않습니다 (교과서.pdf 약 96MB)
+*.pdf
+
+# 편집기/OS 부산물
+.DS_Store
+Thumbs.db
+
+# 임시/확인용 파일
+_to_delete/
+사진점검표.html

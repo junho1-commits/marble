@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Jua&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260820_09" />
+    <link rel="stylesheet" href="style.css?v=20260821_18" />
   </head>
   <body>
     <!-- 게임 설정 모달 -->
@@ -103,10 +103,17 @@
     <!-- 타일 정보 카드 미리보기 모달 -->
     <div id="info-modal" class="setup-modal hidden">
       <div class="setup-card info-card">
-        <p class="setup-eyebrow" id="info-tag">지리 탐구 정보</p>
-        <h1 id="info-title">국가 정보</h1>
-        <div id="info-photo" class="info-photo"></div>
-        <p id="info-desc" class="info-desc"></p>
+        <div class="info-head">
+          <img id="info-flag" class="info-flag hidden" alt="국기">
+          <div class="info-head-text">
+            <p class="setup-eyebrow" id="info-tag">지리 탐구 정보</p>
+            <h1 id="info-title">국가 정보</h1>
+          </div>
+        </div>
+        <div class="info-body">
+          <div id="info-photo" class="info-photo"></div>
+          <p id="info-desc" class="info-desc"></p>
+        </div>
         <div class="info-stats">
           <div class="info-stat-item"><span>토지 가격</span><strong id="info-cost">₩0</strong></div>
           <div class="info-stat-item"><span>현재 소유자</span><strong id="info-owner">없음</strong></div>
@@ -127,40 +134,72 @@
       </div>
     </div>
 
+
+    <!-- 보너스 카드 · 선택 확인 공용 모달 -->
+    <div id="card-modal" class="setup-modal hidden">
+      <div class="setup-card bonus-card-modal">
+        <p class="setup-eyebrow" id="card-eyebrow">BONUS CARD</p>
+        <div id="card-icon" class="bonus-card-icon">🌿</div>
+        <h1 id="card-title">보너스 카드</h1>
+        <p id="card-desc" class="bonus-card-desc"></p>
+        <div id="card-choices" class="card-choices hidden"></div>
+        <div id="card-actions" class="card-actions"></div>
+      </div>
+    </div>
+
     <main class="app-shell">
       <section class="game-layout">
         <div class="board-section">
           <div class="board-frame">
             <div id="board" class="board" aria-label="32칸 보드게임판"></div>
             <div class="board-center">
-              <div class="game-title">교실 속 세계일주</div>
-              
-              <!-- 누구 차례인지 크게 보여주는 중앙 턴 배너 -->
-              <div id="center-turn-indicator" class="center-turn-indicator">
-                <span id="center-turn-dot" class="center-turn-dot p-0"></span>
-                <span id="center-turn-text"><strong>플레이어 1</strong> 차례</span>
-              </div>
-              
-              <!-- 단일 주사위 및 굴리기 버튼 -->
-              <div class="center-dice-row">
-                <div class="single-die-wrapper">
-                  <div class="die-scene">
-                    <div id="die-one" class="die">
-                      <i class="die-face front">1</i>
-                      <i class="die-face back">6</i>
-                      <i class="die-face right">3</i>
-                      <i class="die-face left">4</i>
-                      <i class="die-face top">5</i>
-                      <i class="die-face bottom">2</i>
-                    </div>
+              <!-- 배경: 회전하는 지구본과 나침반 (script.js에서 그림) -->
+              <svg id="globe" class="globe" viewBox="0 0 200 200" aria-hidden="true"></svg>
+
+              <div class="center-stack">
+                <div class="center-top">
+                  <div class="game-title">교실 속 세계일주</div>
+
+                  <!-- 누구 차례인지 크게 보여주는 중앙 턴 배너 -->
+                  <div id="center-turn-indicator" class="center-turn-indicator">
+                    <span id="center-turn-dot" class="center-turn-dot p-0"></span>
+                    <span id="center-turn-text"><strong>플레이어 1</strong> 차례</span>
                   </div>
-                  <span class="sum"><strong id="roll-sum">1</strong>칸</span>
                 </div>
-                <button id="roll-button" class="roll-button">
-                  <span id="roll-btn-text">주사위 굴리기</span>
-                  <span class="button-arrow">🎲</span>
-                </button>
+
+                <!-- 가운데는 비워 둔다. 지구본의 현재 칸 표시가 여기서 반짝인다 -->
+                <div class="center-gap"></div>
+
+                <div class="center-bottom">
+                  <!-- 지구본이 가리키는 나라 안내 -->
+                  <div id="globe-caption" class="globe-caption hidden"></div>
+
+                  <!-- 위에서 내려다본 입체 주사위와 굴리기 버튼 -->
+                  <div class="center-dice-row">
+                  <div class="single-die-wrapper">
+                    <div class="die-scene">
+                      <div id="die-one" class="die">
+                        <i class="die-face f1"></i>
+                        <i class="die-face f6"></i>
+                        <i class="die-face f3"></i>
+                        <i class="die-face f4"></i>
+                        <i class="die-face f5"></i>
+                        <i class="die-face f2"></i>
+                      </div>
+                      <div class="die-shadow"></div>
+                    </div>
+                    <span class="sum"><strong id="roll-sum">1</strong>칸</span>
+                  </div>
+                    <button id="roll-button" class="roll-button">
+                      <span id="roll-btn-text">주사위 굴리기</span>
+                      <span class="button-arrow">🎲</span>
+                    </button>
+                  </div>
+                </div>
               </div>
+
+              <!-- 화면 알림(토스트) 영역: 보드 한가운데 빈 공간에 표시 -->
+              <div id="toast-area" class="toast-area" aria-live="polite"></div>
             </div>
           </div>
         </div>
@@ -216,6 +255,12 @@
                   <span class="no-lands">아직 소유한 땅이 없습니다.</span>
                 </div>
               </div>
+              <div class="player-items-section">
+                <div class="lands-header">보너스 카드</div>
+                <div class="player-items">
+                  <span class="no-items">보유 카드 없음</span>
+                </div>
+              </div>
             </div>
 
             <!-- 플레이어 2 -->
@@ -244,6 +289,12 @@
                 <div class="lands-header">소유한 땅 (<span class="lands-count">0</span>곳)</div>
                 <div class="lands-list">
                   <span class="no-lands">아직 소유한 땅이 없습니다.</span>
+                </div>
+              </div>
+              <div class="player-items-section">
+                <div class="lands-header">보너스 카드</div>
+                <div class="player-items">
+                  <span class="no-items">보유 카드 없음</span>
                 </div>
               </div>
             </div>
@@ -276,6 +327,12 @@
                   <span class="no-lands">아직 소유한 땅이 없습니다.</span>
                 </div>
               </div>
+              <div class="player-items-section">
+                <div class="lands-header">보너스 카드</div>
+                <div class="player-items">
+                  <span class="no-items">보유 카드 없음</span>
+                </div>
+              </div>
             </div>
 
             <!-- 플레이어 4 -->
@@ -306,6 +363,12 @@
                   <span class="no-lands">아직 소유한 땅이 없습니다.</span>
                 </div>
               </div>
+              <div class="player-items-section">
+                <div class="lands-header">보너스 카드</div>
+                <div class="player-items">
+                  <span class="no-items">보유 카드 없음</span>
+                </div>
+              </div>
             </div>
           </div>
         </aside>
@@ -316,6 +379,10 @@
         <span>제작 : 모덕초 조준호</span>
       </footer>
     </main>
-    <script src="script.js?v=20260820_09"></script>
+
+
+    <script src="worldmap.js?v=20260821_18"></script>
+    <script src="questions.js?v=20260821_18"></script>
+    <script src="script.js?v=20260821_18"></script>
   </body>
 </html>

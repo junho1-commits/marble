@@ -281,12 +281,96 @@ button { font: inherit; }
 .bankrupt-btn:hover { background: #1f2937; }
 
 /* 타일 정보 모달 */
-.info-photo { width: 100%; height: 170px; background-size: cover; background-position: center; border: 1.5px solid var(--ink); margin-bottom: 12px; border-radius: 4px; }
-.info-desc { font-size: 14px; line-height: 1.55; color: #333; margin-bottom: 14px; background: var(--white); padding: 12px; border: 1px solid var(--line); border-radius: 4px; }
-.info-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-.info-stat-item { background: var(--white); border: 1.5px solid var(--ink); padding: 8px 6px; text-align: center; font-size: 12px; border-radius: 4px; }
-.info-stat-item span { display: block; color: #777; font-size: 11px; margin-bottom: 4px; }
-.info-stat-item strong { color: var(--ink); font-size: 14px; }
+/* 나라 정보 팝업: 사진과 설명을 크게 보여 준다 */
+.info-card {
+  width: min(1020px, 95vw) !important;
+  max-height: 94vh !important;
+  padding: 30px 34px !important;
+  box-shadow: 12px 12px 0 var(--ink) !important;
+  border-radius: 10px !important;
+}
+
+/* 나라 이름 앞의 국기 */
+.info-head {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.info-flag {
+  flex: 0 0 auto;
+  width: auto;
+  height: 62px;
+  border: 2.5px solid var(--ink);
+  border-radius: 5px;
+  box-shadow: 3px 3px 0 var(--ink);
+  background: var(--white);
+  object-fit: contain;
+}
+
+.info-head-text { min-width: 0; }
+.info-head-text .setup-eyebrow { margin: 0 0 2px; font-size: 13px; }
+.info-card h1 { margin: 0 !important; font-size: clamp(34px, 3.6vw, 46px) !important; }
+
+/* 사진과 설명을 나란히 두어 큰 글씨로도 스크롤 없이 담는다 */
+.info-body {
+  display: grid;
+  grid-template-columns: 46% 1fr;
+  gap: 18px;
+  align-items: stretch;
+  margin-bottom: 18px;
+}
+
+.info-photo {
+  width: 100%;
+  min-height: clamp(230px, 34vh, 380px);
+  background-size: cover;
+  background-position: center;
+  border: 2.5px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--ink);
+  border-radius: 6px;
+}
+
+.setup-card p.info-desc {
+  font-size: clamp(17px, 1.55vw, 21px);
+  line-height: 1.85;
+  color: #24241f;
+  font-weight: 500;
+  margin: 0;
+  background: var(--white);
+  padding: 20px 22px;
+  border: 2.5px dashed var(--ink);
+  border-radius: 8px;
+  word-break: keep-all;
+  overflow-y: auto;
+}
+
+.info-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 10px; }
+.info-stat-item { background: var(--white); border: 2.5px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); padding: 14px 10px; text-align: center; border-radius: 6px; }
+.info-stat-item span { display: block; color: #6d6a62; font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+.info-stat-item strong { color: var(--ink); font-size: clamp(18px, 1.7vw, 23px); font-family: "DM Mono", monospace; }
+
+@media (max-height: 800px) {
+  .info-card { padding: 20px 26px !important; }
+  .info-card h1 { font-size: clamp(30px, 3vw, 38px) !important; }
+  .info-body { gap: 14px; margin-bottom: 12px; }
+  .info-photo { min-height: clamp(210px, 30vh, 300px); }
+  .setup-card p.info-desc { padding: 14px 16px; line-height: 1.7; font-size: clamp(16px, 1.35vw, 18px); }
+  .info-flag { height: 48px; }
+  .info-stat-item { padding: 10px 8px; }
+  .info-stat-item span { font-size: 13px; margin-bottom: 3px; }
+}
+
+/* 사진이 없는 특수칸은 설명이 전체 폭을 쓴다 */
+.info-body.no-photo { grid-template-columns: 1fr; }
+.info-body.no-photo .info-desc { min-height: clamp(200px, 26vh, 300px); }
+
+/* 좁은 화면에서는 사진 아래에 설명을 놓는다 */
+@media (max-width: 860px) {
+  .info-body { grid-template-columns: 1fr; }
+  .info-photo { min-height: 200px; }
+}
 
 /* 우승 결과 모달 */
 .victory-ranking { display: grid; gap: 8px; margin: 16px 0; }
@@ -297,47 +381,47 @@ button { font: inherit; }
 .victory-rank-val { font-weight: 800; color: var(--orange); font-family: "DM Mono", monospace; font-size: 17px; }
 
 /* ============================================================
-   메인 레이아웃: 보드판 97vh 극대화 & 우측 여백 정중앙 정렬
+   메인 레이아웃: 상단바 제거 & 보드판 98vh 극대화!
    ============================================================ */
 .app-shell {
   max-width: 100vw;
   height: 100vh;
   margin: 0 auto;
-  padding: 4px 16px;
+  padding: 4px 12px 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
 }
 
-/* 플렉스 기반 2열 레이아웃: 보드판 + 우측 여백의 가운데 배치된 사이드바 */
+/* 2열 메인 레이아웃: 보드판(화면 세로 97vh 극대화) + 우측 사이드바 */
 .game-layout {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: clamp(16px, 2.5vw, 42px);
+  display: grid;
+  /* 보드판이 남는 가로 공간을 모두 쓰고, 사이드바는 오른쪽에 둔다.
+     화면이 좁을 때는 사이드바가 먼저 줄어들어 보드판이 찌그러지지 않게 한다 */
+  grid-template-columns: minmax(0, 1fr) min(400px, 32vw);
+  gap: 16px;
   width: 100%;
   height: 100%;
-  max-width: 1600px;
-  margin: 0 auto;
+  align-items: center;
 }
 
 .board-section {
-  flex: 0 0 auto;
   display: flex;
   justify-content: center;
   align-items: center;
+  width: 100%;
   height: 100%;
 }
 
 /* 크롬북 화면에서 세로 97vh까지 꽉 차는 정사각형 극대화 보드 */
 .board-frame {
   position: relative;
-  width: min(97vh, 100%);
-  height: min(97vh, 100%);
-  max-width: 960px;
-  max-height: 960px;
-  aspect-ratio: 1;
+  /* 정사각형을 풀고 가로로 넓힌다. 칸 비율이 사진(3:2)보다 넓어지지 않게 상한을 둔다.
+     높이 상한(1100px)을 폭 계산에도 똑같이 반영해야 넓은 화면에서 칸이 지나치게 납작해지지 않는다 */
+  height: min(97vh, 1100px, 100%);
+  width: min(100%, calc(min(97vh, 1100px, 100%) * 1.5));
+  aspect-ratio: auto;
   padding: 1.5%;
   border: 3px solid var(--ink);
   background: #ebe5d8;
@@ -361,10 +445,10 @@ button { font: inherit; }
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
+  justify-content: flex-end;   /* 이름 띠를 타일 맨 아래에 붙인다 */
+  align-items: stretch;
   min-width: 0;
-  padding: 3px 2px 2px;
+  padding: 0;
   background: var(--white);
   overflow: hidden;
   cursor: pointer;
@@ -405,73 +489,79 @@ button { font: inherit; }
 .tile.photo-tile.accent-mint { background-color: #284439; }
 .tile.photo-tile.accent-pink { background-color: #4d2f35; }
 
+/* 사진을 가리지 않도록 덮개를 아주 옅게만 남긴다 (태그 글씨 대비용) */
 .tile.photo-tile::after {
   position: absolute;
-  z-index: -1;
+  z-index: 1;
   inset: 0;
-  background: linear-gradient(180deg, rgba(0,0,0,.68) 0%, rgba(0,0,0,.15) 38%, rgba(0,0,0,.88) 100%);
+  background: linear-gradient(180deg, rgba(0,0,0,.30) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 100%);
   content: "";
+  pointer-events: none;
 }
 
 .tile.special-start { background: linear-gradient(135deg, #ef6a43, #c53c16) !important; color: white !important; }
 .tile.special-climate { background: linear-gradient(135deg, #38846c, #1f5746) !important; color: white !important; }
 .tile.special-landform { background: linear-gradient(135deg, #c7742d, #8f4d15) !important; color: white !important; }
 .tile.special-eco { background: linear-gradient(135deg, #3d8652, #215e33) !important; color: white !important; }
-.tile.special-tile .tile-name { font-size: clamp(12.5px, 1.5vw, 19px); color: #fff; text-shadow: 0 1px 4px #000; font-weight: 900; }
-.tile.special-tile .special-badge { position: absolute; top: 2px; right: 3px; font-size: 16px; }
+/* 특수칸은 칸 색이 비치도록 이름 띠를 반투명하게 두고, 글자는 칸 폭에 맞춘다 */
+.tile.special-tile .tile-name { font-size: clamp(9px, 0.88vw, 15px); color: #fff; background: rgba(0,0,0,.42); font-weight: 900; }
+.tile.special-tile .special-badge { position: absolute; top: 2px; right: 3px; z-index: 4; font-size: clamp(11px, 1.1vw, 15px); }
 
 /* 타일 상단 기후/지형 태그 (크고 선명하게) */
 .tile-category-tag {
-  font-size: clamp(8.5px, 1.05vw, 13.5px);
-  padding: 2px 5px;
-  background: rgba(0,0,0,0.85);
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  font-size: clamp(8px, 0.72vw, 12px);
+  padding: 1.5px 5px;
+  background: rgba(0,0,0,0.82);
   color: #fff;
   border-radius: 3px;
   width: fit-content;
-  max-width: 96%;
+  max-width: calc(100% - 4px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 800;
   line-height: 1.2;
-  margin-bottom: 1px;
-  z-index: 2;
-  letter-spacing: -0.02em;
+  z-index: 4;
+  letter-spacing: -0.045em;
 }
 
 /* 타일 국가명 (대형 굵은 폰트) */
+/* 나라 이름은 사진 위에 겹치지 않고 아래쪽 띠에 놓는다 */
 .tile-name {
+  order: 2;
   position: relative;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  z-index: 5;
+  display: block;
   width: 100%;
-  max-width: 100%;
-  margin: auto 0;
+  padding: 2px 3px 3px;
+  background: rgba(23, 26, 22, 0.9);
+  color: #fffdf7;
   overflow: hidden;
   text-align: center;
   white-space: nowrap;
   text-overflow: ellipsis;
-  font-size: clamp(13.5px, 1.75vw, 23px);
-  line-height: 1.1;
+  font-size: clamp(11px, 1.15vw, 19px);
+  line-height: 1.18;
   font-weight: 900;
-  text-shadow: 0 2px 5px rgba(0,0,0,0.98), 0 0 7px rgba(0,0,0,0.9);
   pointer-events: none;
   letter-spacing: -0.03em;
 }
 
-.tile-name.medium-name { font-size: clamp(11.5px, 1.4vw, 18px); }
-.tile-name.long-name { font-size: clamp(9.5px, 1.15vw, 15px); }
+.tile-name.medium-name { font-size: clamp(10px, 1.02vw, 17px); }  /* 4글자 이름 */
+.tile-name.long-name { font-size: clamp(9px, 0.88vw, 15px); }     /* 5글자 이상 이름 */
 
 /* 소유자 배지 */
 .owner-badge {
+  order: 1;
   position: relative;
   z-index: 5;
   width: 100%;
-  padding: 2px 2px;
+  padding: 1.5px 2px;
   color: #fff;
-  font: 900 clamp(9px, 1.05vw, 13px) "Space Grotesk", sans-serif;
+  font: 900 clamp(8.5px, 0.95vw, 12.5px) "Space Grotesk", sans-serif;
   text-align: center;
   text-shadow: 0 1px 3px rgba(0,0,0,0.95);
   border-radius: 2px;
@@ -491,34 +581,45 @@ button { font: inherit; }
 .tile.owner-3 .owner-badge { background: #3d8652; }
 
 /* 타일 내 다중 말 배치 컨테이너 */
+/* 말은 이름 띠 바로 위 공간에 놓는다 (이름과 겹치지 않음) */
 .piece-container {
-  position: absolute;
+  order: 0;
+  position: relative;
   z-index: 6;
-  inset: 2px;
+  flex: 1 1 auto;
+  min-height: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
+  grid-template-rows: auto auto;
+  align-content: end;
+  justify-items: center;
+  gap: 1px;
+  padding: 0 2px 2px;
   pointer-events: none;
 }
 
 .piece-slot {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   width: 100%;
-  height: 100%;
+  min-height: 0;
 }
 
 .piece {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  /* 부모 높이가 유동적이므로 백분율 대신 화면 높이 기준으로 크기를 정한다 */
+  width: clamp(13px, 2.1vh, 24px);
+  height: clamp(13px, 2.1vh, 24px);
+  flex: 0 0 auto;
+  aspect-ratio: 1;
   border: 2px solid var(--ink);
   border-radius: 50%;
   color: white;
-  font: bold 13px "DM Mono", monospace;
-  box-shadow: 2px 2px 0 var(--ink);
+  font: bold clamp(9px, 1.35vh, 13px)/1 "DM Mono", monospace;
+  box-shadow: 1.5px 1.5px 0 var(--ink);
+  overflow: hidden;
   transition: transform .25s ease;
 }
 
@@ -603,44 +704,87 @@ button { font: inherit; }
   gap: 8px;
 }
 
+/* ============================================================
+   주사위 — 위에서 내려다보는 입체 주사위
+   ============================================================ */
 .die-scene {
-  width: 48px;
-  height: 48px;
-  perspective: 300px;
+  position: relative;
+  width: clamp(50px, 6.8vh, 92px);
+  height: clamp(50px, 6.8vh, 92px);
+  /* 위에서 내려다보는 시점. 기울기는 script.js의 DIE_TILT 가 담당한다 */
+  perspective: 520px;
+  perspective-origin: 50% 40%;
 }
 
 .die {
-  position: relative;
-  width: 48px;
-  height: 48px;
+  position: absolute;
+  inset: 0;
   transform-style: preserve-3d;
-  transform: rotateX(-20deg) rotateY(30deg);
-  transition: transform .5s cubic-bezier(.2,.8,.2,1);
+  /* 굴러가는 동안은 빠르게, 착지할 때 부드럽게 멈춘다 */
+  transition: transform 1s cubic-bezier(.18, .72, .16, 1);
+}
+
+.die.is-tumbling { transition: transform 1s cubic-bezier(.32, .04, .18, 1); }
+.die.is-landing { animation: die-bounce .3s ease-out; }
+
+@keyframes die-bounce {
+  0% { translate: 0 -6%; }
+  55% { translate: 0 2%; }
+  100% { translate: 0 0; }
 }
 
 .die-face {
   position: absolute;
+  inset: 0;
   display: grid;
-  place-items: center;
-  width: 48px;
-  height: 48px;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 0;
+  padding: 14%;
   border: 2px solid var(--ink);
-  background: var(--white);
-  color: var(--ink);
-  font: 22px "DM Mono", monospace;
-  font-style: normal;
-  font-weight: bold;
+  border-radius: 14%;
+  background: linear-gradient(145deg, #fffdf7 0%, #ece5d6 100%);
   backface-visibility: hidden;
-  box-shadow: inset 0 0 5px rgba(0,0,0,0.12);
+  box-sizing: border-box;
 }
 
-.die-face.front { transform: translateZ(24px); }
-.die-face.back { transform: rotateY(180deg) translateZ(24px); }
-.die-face.right { transform: rotateY(90deg) translateZ(24px); }
-.die-face.left { transform: rotateY(-90deg) translateZ(24px); }
-.die-face.top { transform: rotateX(90deg) translateZ(24px); }
-.die-face.bottom { transform: rotateX(-90deg) translateZ(24px); }
-.die.is-rolling { animation: cube-roll .45s linear infinite; }
+/* 눈(점) */
+.die-face::before, .die-face::after { content: none; }
+.die-pip {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+.die-pip i {
+  width: 76%;
+  height: 76%;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: inset -1px -1px 1px rgba(255,255,255,.35);
+}
+.die-face.pip-red .die-pip i { background: #d23b3b; }
+
+/* 면 배치: 마주 보는 면의 합이 7 (1-6, 2-5, 3-4) */
+.die-face.f2 { transform: rotateX(90deg)  translateZ(calc(clamp(50px, 6.8vh, 92px) / 2)); }
+.die-face.f5 { transform: rotateX(-90deg) translateZ(calc(clamp(50px, 6.8vh, 92px) / 2)); }
+.die-face.f1 { transform: rotateX(0deg)   translateZ(calc(clamp(50px, 6.8vh, 92px) / 2)); }
+.die-face.f6 { transform: rotateX(180deg) translateZ(calc(clamp(50px, 6.8vh, 92px) / 2)); }
+.die-face.f3 { transform: rotateY(90deg)  translateZ(calc(clamp(50px, 6.8vh, 92px) / 2)); }
+.die-face.f4 { transform: rotateY(-90deg) translateZ(calc(clamp(50px, 6.8vh, 92px) / 2)); }
+
+/* 주사위 그림자 */
+.die-shadow {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: -14%;
+  height: 14%;
+  border-radius: 50%;
+  background: rgba(32, 35, 31, .28);
+  filter: blur(3px);
+  z-index: -1;
+}
 
 .sum {
   font: 14px "DM Mono", monospace;
@@ -687,21 +831,25 @@ button { font: inherit; }
 }
 
 /* ============================================================
-   오른쪽 사이드바: 우측 여백 정중앙 배치 & 대형 폰트
+   오른쪽 사이드바: 상단 컨트롤 카드 + 대형 플레이어 카드
    ============================================================ */
 .sidebar {
-  flex: 0 1 450px;
-  width: 100%;
-  max-width: 460px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 10px;
+  align-items: center;   /* 오른쪽 여백의 가운데로 카드들을 모은다 */
+  gap: 6px;              /* 4인 플레이에서도 카드 4장이 화면에 다 들어오도록 */
   height: 97vh;
   max-height: 97vh;
   overflow-y: auto;
-  padding: 4px;
+  padding: 0 4px;
   box-sizing: border-box;
+}
+
+/* 사이드바 안의 카드는 폭을 고정해 여백 가운데에 놓이게 한다 */
+.sidebar > * {
+  width: 100%;
+  max-width: 400px;
+  flex: 0 0 auto;
 }
 
 .sidebar::-webkit-scrollbar {
@@ -716,12 +864,12 @@ button { font: inherit; }
 .game-control-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px 16px;
+  gap: 8px;
+  padding: 10px 12px;
   background: var(--white);
-  border: 2.5px solid var(--ink);
-  border-radius: 8px;
-  box-shadow: 4px 4px 0 var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  box-shadow: 3px 3px 0 var(--ink);
 }
 
 .control-card-top {
@@ -732,7 +880,7 @@ button { font: inherit; }
 
 .brand {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
   font-weight: 800;
 }
@@ -740,65 +888,65 @@ button { font: inherit; }
 .brand-mark {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 2px solid var(--ink);
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid var(--ink);
   border-radius: 50%;
   color: var(--orange);
-  font-size: 15px;
+  font-size: 13px;
 }
 
 .brand-title {
   font-family: "Jua", sans-serif;
-  font-size: 22px;
+  font-size: 19px;
   color: var(--orange);
-  text-shadow: 1.5px 1.5px 0 var(--ink);
+  text-shadow: 1px 1px 0 var(--ink);
 }
 
 .sound-toggle-btn {
-  padding: 6px 13px;
-  border: 2px solid var(--ink);
+  padding: 4px 10px;
+  border: 1.5px solid var(--ink);
   background: var(--white);
   cursor: pointer;
-  font: 13px "DM Mono", monospace;
-  font-weight: 800;
-  border-radius: 5px;
+  font: 11px "DM Mono", monospace;
+  font-weight: bold;
+  border-radius: 4px;
   transition: all .15s;
 }
 .sound-toggle-btn:hover { background: var(--yellow); }
 
 .control-card-status {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
   flex-wrap: wrap;
 }
 
 .room-code {
-  padding: 4px 10px;
+  padding: 3px 8px;
   background: #f0ebe1;
-  border: 1.5px solid var(--ink);
-  border-radius: 5px;
+  border: 1px solid var(--ink);
+  border-radius: 4px;
   color: var(--ink);
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: bold;
   font-family: "DM Mono", monospace;
 }
 
 .status-pill {
-  padding: 4px 11px;
+  padding: 3px 8px;
   background: #f0ebe1;
-  border: 1.5px solid var(--ink);
-  border-radius: 14px;
-  font-size: 13px;
-  font-weight: 800;
+  border: 1px solid var(--ink);
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
   color: var(--ink);
   font-family: "DM Mono", monospace;
 }
 
 .status-pill strong {
   color: var(--orange);
-  font-size: 15px;
+  font-size: 12px;
 }
 
 .status-pill strong.time-warning {
@@ -810,64 +958,63 @@ button { font: inherit; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 4px;
+  margin-top: 2px;
   margin-bottom: 2px;
 }
 
 .sidebar-header h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 15px;
   font-family: "Space Grotesk", sans-serif;
   color: var(--ink);
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .player-count-badge {
-  font-size: 13px;
+  font-size: 11px;
   font-family: "DM Mono", monospace;
   background: var(--white);
-  border: 1.5px solid var(--line);
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-weight: 700;
+  border: 1px solid var(--line);
+  padding: 2px 6px;
+  border-radius: 3px;
 }
 
 /* 개별 플레이어 대형 카드 */
 .player-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 14px 16px;
+  gap: 6px;
+  padding: 10px 12px;
   background: var(--white);
-  border: 2.5px solid var(--ink);
-  border-radius: 8px;
-  box-shadow: 4px 4px 0 var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  box-shadow: 3px 3px 0 var(--ink);
   transition: all .2s ease;
 }
 
 .player-card.active {
-  border: 3px solid var(--orange);
+  border: 2.5px solid var(--orange);
   background: #fffcf8;
-  box-shadow: 5px 5px 0 var(--orange);
+  box-shadow: 4px 4px 0 var(--orange);
   transform: scale(1.02);
 }
 
 .player-card-top {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .avatar {
   display: grid;
   flex: 0 0 auto;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   border: 2px solid var(--ink);
   border-radius: 50%;
-  font: 18px "DM Mono", monospace;
-  font-weight: 900;
+  font: 15px "DM Mono", monospace;
+  font-weight: bold;
   color: white;
 }
 
@@ -890,8 +1037,8 @@ button { font: inherit; }
 }
 
 .player-name {
-  font-size: 18px;
-  font-weight: 900;
+  font-size: 15px;
+  font-weight: 800;
   color: var(--ink);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -900,13 +1047,13 @@ button { font: inherit; }
 
 .turn-tag {
   display: none;
-  font-size: 12px;
-  font-weight: 800;
+  font-size: 10px;
+  font-weight: 700;
   color: var(--orange);
   font-family: "DM Mono", monospace;
   background: #ffebe3;
-  padding: 2px 7px;
-  border-radius: 10px;
+  padding: 1px 5px;
+  border-radius: 8px;
 }
 
 .player-card.active .turn-tag {
@@ -914,22 +1061,21 @@ button { font: inherit; }
 }
 
 .player-location {
-  font-size: 13px;
+  font-size: 11px;
   color: #666;
   font-family: "DM Mono", monospace;
-  font-weight: 700;
-  margin-top: 2px;
+  font-weight: 600;
 }
 
 /* 금액 & 총자산 표시 박스 */
 .player-wealth-box {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 6px;
   background: #f7f4ed;
-  border: 1.5px solid var(--line);
-  padding: 8px 12px;
-  border-radius: 6px;
+  border: 1px solid var(--line);
+  padding: 5px 8px;
+  border-radius: 4px;
 }
 
 .wealth-item {
@@ -938,45 +1084,45 @@ button { font: inherit; }
 }
 
 .wealth-lbl {
-  font-size: 12px;
-  color: #666;
+  font-size: 10px;
+  color: #777;
   font-family: "DM Mono", monospace;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .money {
-  font: 900 19px "DM Mono", monospace;
+  font: 700 16px "DM Mono", monospace;
   color: var(--ink);
 }
 
 .asset-total {
-  font: 900 19px "DM Mono", monospace;
+  font: 700 16px "DM Mono", monospace;
   color: var(--orange);
 }
 
 /* 소유한 땅 목록 태그 */
 .player-lands-section {
-  border-top: 1.5px dashed var(--line);
-  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+  padding-top: 5px;
 }
 
 .lands-header {
-  font-size: 13px;
-  font-weight: 800;
-  color: #444;
-  margin-bottom: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #555;
+  margin-bottom: 3px;
   font-family: "Space Grotesk", sans-serif;
 }
 
 .lands-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  min-height: 24px;
+  gap: 4px;
+  min-height: 20px;
 }
 
 .no-lands {
-  font-size: 12px;
+  font-size: 10px;
   color: #999;
   font-style: italic;
 }
@@ -984,26 +1130,27 @@ button { font: inherit; }
 .land-pill {
   display: inline-flex;
   align-items: center;
-  padding: 3px 8px;
+  padding: 2px 6px;
   background: var(--white);
-  border: 1.5px solid var(--ink);
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: 800;
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 700;
   color: var(--ink);
-  box-shadow: 1.5px 1.5px 0 var(--ink);
+  box-shadow: 1px 1px 0 var(--ink);
   line-height: 1.2;
 }
 
-.land-pill.building-1::after { content: " 🏠"; font-size: 11px; }
-.land-pill.building-2::after { content: " 🏘️"; font-size: 11px; }
-.land-pill.building-3::after { content: " 🏰"; font-size: 11px; }
+.land-pill.building-1::after { content: " 🏠"; font-size: 9px; }
+.land-pill.building-2::after { content: " 🏘️"; font-size: 9px; }
+.land-pill.building-3::after { content: " 🏰"; font-size: 9px; }
 
 /* 화면 오른쪽 최하단 고정 제작자 크레딧 */
 .app-credit {
+  /* 사이드바가 오른쪽 여백 가운데로 오면서 겹치므로 왼쪽 아래로 옮겼습니다 */
   position: fixed;
-  right: 20px;
-  bottom: 12px;
+  left: 16px;
+  bottom: 10px;
   z-index: 100;
   font-size: 12px;
   font-family: "Space Grotesk", sans-serif;
@@ -1056,3 +1203,263 @@ button { font: inherit; }
   }
 }
 
+
+/* ============================================================
+   보너스 카드 · 선택 모달
+   ============================================================ */
+.bonus-card-modal {
+  max-width: 560px;
+  text-align: center;
+}
+
+.bonus-card-icon {
+  margin: 4px auto 6px;
+  font-size: 58px;
+  line-height: 1;
+  animation: card-pop .45s cubic-bezier(.2, 1.4, .5, 1);
+}
+
+@keyframes card-pop {
+  0% { transform: scale(.4) rotate(-12deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+.bonus-card-desc {
+  margin: 0 auto 14px;
+  max-width: 460px;
+  color: #4a4a44;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.card-sub-btn {
+  padding: 11px 16px;
+  border: 2px solid var(--ink);
+  border-radius: 5px;
+  background: var(--white);
+  color: var(--ink);
+  cursor: pointer;
+  font: 600 14px "Space Grotesk", sans-serif;
+  transition: background .15s;
+}
+
+.card-sub-btn:hover { background: #f0ebe0; }
+
+/* '세계 어디든 이동' 카드의 나라 고르기 목록 */
+.card-choices {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  max-height: 46vh;
+  margin-bottom: 12px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.card-choice-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 6px;
+  border: 2px solid var(--ink);
+  border-radius: 5px;
+  background: var(--white);
+  cursor: pointer;
+  text-align: center;
+  transition: background .15s, transform .12s;
+}
+
+.card-choice-btn:hover { background: #fff3e6; transform: translateY(-2px); }
+.card-choice-btn strong { font: 700 14px "Jua", sans-serif; color: var(--ink); }
+.card-choice-btn span { font-size: 10px; color: #7c7870; font-family: "DM Mono", monospace; }
+
+@media (max-width: 700px) {
+  .card-choices { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ============================================================
+   플레이어 카드의 보너스 카드 보유 표시
+   ============================================================ */
+.player-items-section {
+  padding-top: 6px;
+  border-top: 1px dashed var(--line);
+}
+
+.player-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.item-pill {
+  padding: 2.5px 7px;
+  border: 1.5px solid #2f7d5c;
+  border-radius: 20px;
+  background: #e6f5ed;
+  color: #1f5b41;
+  font: 700 11px "Space Grotesk", sans-serif;
+}
+
+.no-items {
+  color: #9a968d;
+  font-size: 11px;
+  font-style: italic;
+}
+
+/* 파산한 플레이어 카드 */
+.player-card.bankrupt {
+  opacity: .55;
+  filter: grayscale(.7);
+}
+
+.player-card.bankrupt .player-location { color: #ef4343; font-weight: 800; }
+
+.victory-rank-row.rank-out { opacity: .6; background: #f2efe9; }
+
+/* ============================================================
+   토스트 알림 — 돈이 오가는 일을 화면에 바로 알려 준다
+   ============================================================ */
+.toast-area {
+  /* 보드판 한가운데 빈 공간에 띄워 칸 이름을 가리지 않게 한다 */
+  position: absolute;
+  bottom: 4%;
+  left: 50%;
+  width: 132%;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  max-width: 100%;
+  padding: 7px 14px;
+  border: 2px solid var(--ink);
+  border-radius: 28px;
+  background: var(--white);
+  box-shadow: 2px 2px 0 var(--ink);
+  font: 600 clamp(11px, 1.05vw, 14px) "Space Grotesk", sans-serif;
+  color: var(--ink);
+  text-align: center;
+  animation: toast-in .25s ease;
+  transition: opacity .45s, transform .45s;
+}
+
+.toast-icon { font-size: 17px; }
+.toast-text b { font-weight: 800; }
+
+.toast-good { background: #e9f7ef; border-color: #2f7d5c; }
+.toast-bad { background: #fdeaea; border-color: #d23b3b; }
+.toast-warn { background: #fff4e2; border-color: #c7742d; }
+
+.toast-out { opacity: 0; transform: translateY(8px); }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 설정 화면의 AI 안내 문구 */
+.ai-notice {
+  margin-top: 6px;
+  color: #777;
+  font-size: 12px;
+}
+
+/* ============================================================
+   세로가 짧은 화면(크롬북 등)에서 4인 플레이 시 카드 4장이 다 들어오도록 압축
+   ============================================================ */
+@media (max-height: 800px) {
+  .sidebar { gap: 5px; }
+  .player-card { gap: 4px; padding: 7px 10px; }
+  .player-wealth-box { padding: 4px 7px; gap: 4px; }
+  .lands-header { margin-bottom: 2px; font-size: 10.5px; }
+  .player-lands-section, .player-items-section { padding-top: 4px; }
+  .sidebar-header { margin-bottom: 2px; }
+}
+
+/* ============================================================
+   중앙 지구본 · 나침반
+   ============================================================ */
+.board-center {
+  overflow: hidden;
+}
+
+.globe {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: min(86%, 86%);
+  height: auto;
+  max-height: 96%;
+  aspect-ratio: 1;
+  opacity: .62;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 지구본 위에 글과 주사위를 올린다 */
+.center-stack {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;   /* 가운데를 비워 지구본 표시가 보이게 한다 */
+  width: 100%;
+  height: 100%;
+  padding: 2% 0;
+  box-sizing: border-box;
+}
+
+.center-top, .center-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.center-gap { flex: 1 1 auto; min-height: 8px; }
+
+/* 현재 칸의 위도·경도 안내 */
+.globe-caption {
+  padding: 4px 14px;
+  border: 2px solid var(--ink);
+  border-radius: 20px;
+  background: rgba(255, 253, 247, .92);
+  box-shadow: 2px 2px 0 var(--ink);
+  font: 600 clamp(11px, 1.15vh, 15px) "Space Grotesk", sans-serif;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.globe-caption b { color: var(--orange); font-weight: 800; }
+
+/* 현재 칸 반짝임 */
+.globe-ping { animation: globe-ping 1.6s ease-out infinite; transform-origin: center; }
+
+@keyframes globe-ping {
+  0% { opacity: .95; r: 4; }
+  70% { opacity: 0; r: 13; }
+  100% { opacity: 0; r: 13; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .globe-ping { animation: none; }
+  .die { transition-duration: .2s; }
+}

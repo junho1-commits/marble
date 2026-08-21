@@ -1,4 +1,6 @@
-// 2022 개정 초등 사회과 교육과정 [6사10-01], [6사10-02], [6사09-01] 연계 <교실 속 세계일주>
+// 2022 개정 초등 사회과 교육과정 [6사10-01], [6사10-02], [6사09-01] 연계 <교실 속 세계일주> 게임 로직
+// 문제 데이터는 questions.js에 있습니다 (index.html에서 이 파일보다 먼저 읽습니다).
+
 const board = document.querySelector('#board');
 const rollButton = document.querySelector('#roll-button');
 const rollBtnText = document.querySelector('#roll-btn-text');
@@ -11,7 +13,6 @@ const targetRuleDisplay = document.querySelector('#target-rule-display');
 const roundCaptionBox = document.querySelector('#round-caption-box');
 const playerCards = document.querySelectorAll('.player-card[data-player-card]');
 const playerCountNum = document.querySelector('#player-count-num');
-const dieOneFace = dieOne.querySelector('.front');
 const setupModal = document.querySelector('#setup-modal');
 const quizModal = document.querySelector('#quiz-modal');
 const infoModal = document.querySelector('#info-modal');
@@ -37,17 +38,25 @@ const centerTurnText = document.querySelector('#center-turn-text');
 const soundToggleBtn = document.querySelector('#sound-toggle');
 const closeInfoBtn = document.querySelector('#close-info');
 const restartGameBtn = document.querySelector('#restart-game');
+const toastArea = document.querySelector('#toast-area');
 
 // 토지 매각 모달 요소
 const sellModal = document.querySelector('#sell-modal');
-const sellTitle = document.querySelector('#sell-title');
-const sellDesc = document.querySelector('#sell-desc');
 const sellRequiredToll = document.querySelector('#sell-required-toll');
 const sellCurrentMoney = document.querySelector('#sell-current-money');
 const sellDeficitMoney = document.querySelector('#sell-deficit-money');
 const sellLandsList = document.querySelector('#sell-lands-list');
 const payTollBtn = document.querySelector('#pay-toll-btn');
 const bankruptBtn = document.querySelector('#bankrupt-btn');
+
+// 보너스 카드 / 선택 모달 요소
+const cardModal = document.querySelector('#card-modal');
+const cardEyebrow = document.querySelector('#card-eyebrow');
+const cardIcon = document.querySelector('#card-icon');
+const cardTitle = document.querySelector('#card-title');
+const cardDesc = document.querySelector('#card-desc');
+const cardChoices = document.querySelector('#card-choices');
+const cardActions = document.querySelector('#card-actions');
 
 // 설정 모달 요소
 const modeRoundBtn = document.querySelector('#mode-round-btn');
@@ -69,14 +78,29 @@ let currentRound = 1;
 let isGameFinished = false;
 let isMoving = false;
 let timerInterval = null;
-const startingMoney = 350000; // 초기 자금 35만원으로 상향
-const salaryBonus = 70000;    // 완주 월급 7만원으로 상향
+let extraRollPending = false;    // '한 번 더 굴리기' 카드
+let pendingPurchaseDiscount = 1; // '반값 매입권' 적용 여부
 
-// Web Audio API 사운드 합성기 (크롬북 정책 호환 및 완벽한 예외 처리)
+const startingMoney = 350000;    // 초기 자금
+const salaryBonus = 70000;       // 출발지 통과 월급
+const lapBonus = 30000;          // 출발지에 정확히 도착했을 때 완주 보너스
+const specialQuizReward = 30000; // 기후/지형 퀴즈 정답 장학금
+
+// 통행세 = 땅값 × 건물 단계별 배율. 초반 부담은 낮추고, 잘 키운 땅은 무섭게.
+const TOLL_RATES = [0.35, 0.7, 1.2, 1.9];
+const buildCostRate = 0.5;       // 건물 1채 값 = 땅값의 50%
+
+function won(n) { return `₩${n.toLocaleString()}`; }
+function tollOf(spaceIndex) {
+  return Math.round(spaces[spaceIndex].cost * TOLL_RATES[Math.min(propertyState[spaceIndex].buildings, 3)]);
+}
+function buildCostOf(spaceIndex) {
+  return Math.round(spaces[spaceIndex].cost * buildCostRate);
+}
+
+// Web Audio API 사운드 합성기 (크롬북 정책 호환 및 예외 처리)
 class SoundManager {
-  constructor() {
-    this.ctx = null;
-  }
+  constructor() { this.ctx = null; }
 
   init() {
     try {
@@ -84,505 +108,194 @@ class SoundManager {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         if (AudioCtx) this.ctx = new AudioCtx();
       }
-      if (this.ctx && this.ctx.state === 'suspended') {
-        this.ctx.resume().catch(() => {});
-      }
+      if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
     } catch (e) {
       console.warn('AudioContext init failed:', e);
     }
   }
 
-  playRoll() {
+  tone(freq, type, dur, vol, delay) {
+    setTimeout(() => {
+      try {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + dur);
+      } catch (err) {}
+    }, delay);
+  }
+
+  play(notes, type = 'sine', dur = 0.2, vol = 0.14, gap = 90) {
     if (!soundEnabled) return;
     try {
       this.init();
       if (!this.ctx) return;
-      for (let i = 0; i < 4; i++) {
-        setTimeout(() => {
-          try {
-            if (!this.ctx) return;
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(160 + Math.random() * 80, this.ctx.currentTime);
-            gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.06);
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-            osc.start();
-            osc.stop(this.ctx.currentTime + 0.06);
-          } catch (err) {}
-        }, i * 65);
-      }
+      notes.forEach((f, i) => this.tone(f, type, dur, vol, i * gap));
     } catch (e) {}
   }
 
-  playStep() {
-    if (!soundEnabled) return;
-    try {
-      this.init();
-      if (!this.ctx) return;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(440, this.ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.08);
-      gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.08);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start();
-      osc.stop(this.ctx.currentTime + 0.08);
-    } catch (e) {}
-  }
-
-  playCorrect() {
-    if (!soundEnabled) return;
-    try {
-      this.init();
-      if (!this.ctx) return;
-      const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6 (딩동댕동)
-      notes.forEach((freq, index) => {
-        setTimeout(() => {
-          try {
-            if (!this.ctx) return;
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-            gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.25);
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-            osc.start();
-            osc.stop(this.ctx.currentTime + 0.25);
-          } catch (err) {}
-        }, index * 90);
-      });
-    } catch (e) {}
-  }
-
-  playIncorrect() {
-    if (!soundEnabled) return;
-    try {
-      this.init();
-      if (!this.ctx) return;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(220, this.ctx.currentTime);
-      osc.frequency.linearRampToValueAtTime(140, this.ctx.currentTime + 0.25);
-      gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.25);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start();
-      osc.stop(this.ctx.currentTime + 0.25);
-    } catch (e) {}
-  }
-
-  playCoin() {
-    if (!soundEnabled) return;
-    try {
-      this.init();
-      if (!this.ctx) return;
-      [987.77, 1318.51].forEach((freq, i) => {
-        setTimeout(() => {
-          try {
-            if (!this.ctx) return;
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-            gain.gain.setValueAtTime(0.14, this.ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.18);
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-            osc.start();
-            osc.stop(this.ctx.currentTime + 0.18);
-          } catch (err) {}
-        }, i * 80);
-      });
-    } catch (e) {}
-  }
-
-  playFanfare() {
-    if (!soundEnabled) return;
-    try {
-      this.init();
-      if (!this.ctx) return;
-      const notes = [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5];
-      notes.forEach((freq, idx) => {
-        setTimeout(() => {
-          try {
-            if (!this.ctx) return;
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-            gain.gain.setValueAtTime(0.18, this.ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.3);
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-            osc.start();
-            osc.stop(this.ctx.currentTime + 0.3);
-          } catch (err) {}
-        }, idx * 130);
-      });
-    } catch (e) {}
-  }
+  playRoll() { this.play([170, 210, 185, 225], 'triangle', 0.06, 0.08, 65); }
+  playStep() { this.play([660], 'sine', 0.08, 0.12, 0); }
+  playCorrect() { this.play([523.25, 659.25, 783.99, 1046.5], 'sine', 0.25, 0.15, 90); }
+  playIncorrect() { this.play([220, 175, 140], 'sawtooth', 0.2, 0.12, 80); }
+  playCoin() { this.play([987.77, 1318.51], 'sine', 0.18, 0.14, 80); }
+  playCard() { this.play([784, 988, 1175], 'triangle', 0.22, 0.15, 70); }
+  playFanfare() { this.play([523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5], 'triangle', 0.3, 0.18, 130); }
+  playBankrupt() { this.play([392, 330, 262, 196], 'sawtooth', 0.35, 0.14, 160); }
 }
 
 const sounds = new SoundManager();
 
-// 소리 토글 버튼
 soundToggleBtn.addEventListener('click', () => {
   soundEnabled = !soundEnabled;
   soundToggleBtn.textContent = soundEnabled ? '🔊 소리 ON' : '🔇 소리 OFF';
   if (soundEnabled) sounds.playStep();
 });
 
-// 32개 보드칸 데이터 (4개 특수칸 + 28개 국가)
+// ============================================================
+// 32개 보드칸 데이터 (특수칸 4개 + 국가 28개)
+//
+// 사진은 각 칸 안의 photo 값으로 직접 지정합니다. 별도 배열을 쓰지 않으므로
+// 칸을 넣거나 빼도 나라와 사진이 어긋나지 않습니다.
+// 사진을 바꾸려면 images 폴더에 파일을 넣고 그 나라 줄의 photo 값만 고치면 됩니다.
+// 28장 모두 실제로 열어 나라와 맞는지 확인했습니다 (2026-08-20).
+// ============================================================
 const spaces = [
-  { name: '출발지', symbol: '🚩', type: 'special-start', tag: '시작점', isSpecial: true, cost: 0,
-    desc: '세계 일주의 출발지입니다. 이곳을 지나가거나 도착할 때마다 세계 일주 월급 ₩50,000을 받습니다.' },
-  { name: '한국', symbol: '◒', type: 'accent-blue', tag: '온대계절풍', cost: 70000,
-    desc: '사계절이 뚜렷하고 여름에 고온다우한 온대 계절풍 기후입니다. 배산임수의 전통 취락과 벼농사가 발달했습니다.',
-    quiz: {
-      question: '우리나라(한국)의 기후 특징으로 알맞은 것은 무엇일까요?',
-      options: ['사계절의 변화가 뚜렷하고 여름에 덥고 비가 많이 온다.', '일 년 내내 눈과 얼음으로 덮여 있다.', '비가 거의 오지 않아 사막이 넓게 펼쳐져 있다.'],
-      answer: '사계절의 변화가 뚜렷하고 여름에 덥고 비가 많이 온다.',
-      explanation: '한국은 중위도 온대 계절풍 기후로 사계절이 뚜렷하며, 여름에는 남동 계절풍의 영향으로 덥고 비가 많이 내립니다.'
-    }
-  },
-  { name: '일본', symbol: '✿', type: 'accent-blue', tag: '화산/온천', cost: 65000,
-    desc: '판의 경계에 위치하여 화산과 지진이 잦지만, 풍부한 온천과 화산 지형을 활용한 관광 산업이 크게 발달했습니다.',
-    quiz: {
-      question: '일본에서 화산 지형과 지열을 활용하여 세계적으로 유명하게 발달한 관광 문화는?',
-      options: ['온천 문화', '사파리 투어', '열대 플랜테이션'],
-      answer: '온천 문화',
-      explanation: '일본은 판의 경계에 위치하여 화산과 지진이 자주 발생하지만, 풍부한 화산 지형과 지열을 이용한 온천 관광이 크게 발달했습니다.'
-    }
-  },
-  { name: '베트남', symbol: '✦', type: 'accent-blue', tag: '열대계절풍', cost: 50000,
-    desc: '메콩강 삼각주와 고온다습한 열대 몬순 기후를 바탕으로 1년에 2~3회 벼를 수확하는 쌀 농사의 중심지입니다.',
-    quiz: {
-      question: '베트남의 메콩강 삼각주와 같은 비옥한 평야와 열대 기후에서 활발하게 이루어지는 농업은?',
-      options: ['벼농사(쌀 농사)', '밀 유목', '순록 사육'],
-      answer: '벼농사(쌀 농사)',
-      explanation: '베트남은 고온 다습한 열대 몬순 기후와 큰 하천의 삼각주 평야를 활용하여 1년에 2~3번 벼를 수확하는 쌀 농사가 매우 발달했습니다.'
-    }
-  },
-  { name: '태국', symbol: '◆', type: 'accent-blue', tag: '열대/하천', cost: 55000,
-    desc: '짜오프라야강을 따라 운하와 하천 교통이 발달하여 배 위에서 과일과 음식을 거래하는 수상 시장 문화가 있습니다.',
-    quiz: {
-      question: '태국처럼 비가 많이 오고 하천이 발달한 열대 지역에서 물 위에서 물건을 사고파는 시장은?',
-      options: ['수상 시장', '오아시스 시장', '빙하 시장'],
-      answer: '수상 시장',
-      explanation: '태국은 하천과 운하 교통이 발달하여 배 위에서 과일, 음식, 채소 등을 거래하는 수상 시장이 전통 생활 문화로 자리잡았습니다.'
-    }
-  },
-  { name: '필리핀', symbol: '◇', type: 'accent-blue', tag: '해안/환경', cost: 45000,
-    desc: '산호초와 아름다운 모래사장이 발달한 해안 관광지입니다. 환경 보전을 위해 일시 폐쇄 정화 작업을 한 보라카이가 유명합니다.',
-    quiz: {
-      question: '필리핀 보라카이섬이 아름다운 해안 관광지로서 지속되기 위해 일시 폐쇄했던 주된 이유는?',
-      options: ['관광객 쓰레기와 환경오염 정화를 위해', '지진 발생으로 지형이 사라져서', '사막화가 급속히 진행되어서'],
-      answer: '관광객 쓰레기와 환경오염 정화를 위해',
-      explanation: '교과서에 소개된 보라카이섬은 지나친 관광 개발과 쓰레기 오염 문제를 해결하고 자연을 보전하기 위해 일시적으로 섬을 폐쇄하고 정화 작업을 했습니다.'
-    }
-  },
-  { name: '인도네시아', symbol: '●', type: 'accent-blue', tag: '열대우림', cost: 50000,
-    desc: '적도 부근의 열대 우림 기후로 지열과 해충을 피하기 위한 고상 가옥과 열대 고무/야자 플랜테이션이 발달했습니다.',
-    quiz: {
-      question: '열대 우림 기후 지역에서 땅의 열기와 습기, 해충을 피하기 위해 바닥을 띄워 지은 집은?',
-      options: ['고상 가옥', '통나무집', '이글루'],
-      answer: '고상 가옥',
-      explanation: '인도네시아 등 열대 기후 지역 주민들은 지면에서 올라오는 뜨거운 열기와 습기, 뱀과 해충을 막기 위해 기둥을 세워 바닥을 높인 고상 가옥을 짓습니다.'
-    }
-  },
-  { name: '인도', symbol: '↗', type: 'accent-blue', tag: '몬순/하천', cost: 60000,
-    desc: '열대 계절풍의 영향을 받으며, 갠지스강을 중심으로 농업과 힌두교 문화가 밀접하게 연결되어 있습니다.',
-    quiz: {
-      question: '인도 주민들이 성스럽게 여기며 삶의 터전이자 종교적 목욕 의식을 치르는 대표적인 하천은?',
-      options: ['갠지스강', '아마존강', '라인강'],
-      answer: '갠지스강',
-      explanation: '갠지스강은 인도 사람들에게 농업용수와 생활용수를 공급할 뿐만 아니라, 힌두교도들이 성스럽게 여기는 대표적인 하천입니다.'
-    }
-  },
-  { name: '기후 퀴즈', symbol: '🌍', type: 'special-climate', tag: '기후탐험', isSpecial: true, cost: 0,
-    desc: '세계의 기후(열대, 건조, 온대, 냉대, 한대, 고산)에 대한 탐구 퀴즈를 풀고 장학금 ₩30,000을 획득하는 특수칸입니다.' },
-  { name: '이탈리아', symbol: '●', type: 'accent-yellow', tag: '지중해성', cost: 65000,
-    desc: '여름이 덥고 건조한 지중해성 기후로, 잎이 단단하고 두꺼운 올리브, 포도, 오렌지 등의 수목 농업이 활발합니다.',
-    quiz: {
-      question: '이탈리아와 같은 지중해성 기후 지역에서 여름의 고온 건조한 날씨를 견디며 잘 자라는 작물은?',
-      options: ['올리브, 포도, 오렌지', '카사바, 얌', '순록, 이끼'],
-      answer: '올리브, 포도, 오렌지',
-      explanation: '지중해 연안은 여름이 덥고 건조하므로 잎이 작고 두꺼우며 단단한 껍질을 가진 올리브, 포도, 코르크 등의 수목 농업이 발달했습니다.'
-    }
-  },
-  { name: '그리스', symbol: '△', type: 'accent-yellow', tag: '지중해해안', cost: 60000,
-    desc: '강렬한 여름 햇빛을 반사하기 위해 외벽을 하얗게 칠한 가옥과 아름다운 지중해 섬 관광이 발달했습니다.',
-    quiz: {
-      question: '그리스 산토리니의 집들이 햇빛을 반사하기 위해 주로 사용하는 벽의 색깔은?',
-      options: ['하얀색', '검은색', '빨간색'],
-      answer: '하얀색',
-      explanation: '지중해성 기후의 강렬한 여름 햇빛과 열기를 반사하여 실내를 시원하게 유지하기 위해 집 외벽을 하얗게 칠합니다.'
-    }
-  },
-  { name: '프랑스', symbol: '✦', type: 'accent-yellow', tag: '서안해양성', cost: 75000,
-    desc: '편서풍과 난류의 영향으로 연중 온화하며 고른 강수량을 보이는 서안 해양성 기후와 넓은 곡창 지대가 발달했습니다.',
-    quiz: {
-      question: '서부 유럽 프랑스에 나타나는 서안 해양성 기후의 가장 큰 특징은?',
-      options: ['편서풍과 난류의 영향으로 연중 온화하고 비가 고르게 내린다.', '여름에 비가 전혀 오지 않고 사막이 된다.', '일 년 내내 영하 40도 이하로 춥다.'],
-      answer: '편서풍과 난류의 영향으로 연중 온화하고 비가 고르게 내린다.',
-      explanation: '바다에서 불어오는 편서풍과 따뜻한 북대서양 해류 덕분에 여름은 서늘하고 겨울은 온화하며 연중 강수량이 고릅니다.'
-    }
-  },
-  { name: '영국', symbol: '◇', type: 'accent-yellow', tag: '서안해양성', cost: 70000,
-    desc: '바다의 영향으로 흐리고 비가 자주 내려 우산, 트렌치코트, 티(Tea) 문화가 일상생활에 정착되었습니다.',
-    quiz: {
-      question: '영국 런던에서 흐린 날이 많고 비가 자주 내려 일상생활에서 필수품이 된 물건은?',
-      options: ['우산과 트렌치코트', '썰매', '선인장 모자'],
-      answer: '우산과 트렌치코트',
-      explanation: '영국은 연중 바다 습기의 영향으로 안개와 보슬비가 자주 내려 우산과 방수 코트(트렌치코트) 문화가 발달했습니다.'
-    }
-  },
-  { name: '독일', symbol: '♢', type: 'accent-yellow', tag: '하천교통', cost: 65000,
-    desc: '유럽의 중심부를 관통하는 라인강을 따라 수상 화물 운송과 공업 도시들이 번영하였습니다.',
-    quiz: {
-      question: '독일을 가로지르며 내륙 수로 교통과 산업 발달의 대동맥 역할을 해온 유명 하천은?',
-      options: ['라인강', '나일강', '미시시피강'],
-      answer: '라인강',
-      explanation: '라인강은 유럽 여러 나라를 연결하는 국제 하천으로, 화물선이 운항하는 수상 교통과 하천 주변 산업이 크게 발달했습니다.'
-    }
-  },
-  { name: '노르웨이', symbol: '▣', type: 'accent-yellow', tag: '피오르해안', cost: 65000,
-    desc: '빙하가 깎아 만든 U자 골짜기에 바닷물이 유입된 웅장한 피오르 해안과 연어 양식업이 유명합니다.',
-    quiz: {
-      question: '노르웨이에서 빙하의 침식 작용으로 만들어진 좁고 깊은 골짜기에 바닷물이 들어온 해안 지형은?',
-      options: ['피오르', '갯벌', '사구'],
-      answer: '피오르',
-      explanation: '노르웨이의 피오르(Fiord)는 과거 빙하가 깎아 만든 U자곡에 바닷물이 차오른 지형으로, 웅장한 절벽 경관 관광과 연어 양식이 발달했습니다.'
-    }
-  },
-  { name: '아이슬란드', symbol: '☕', type: 'accent-yellow', tag: '화산/지열', cost: 60000,
-    desc: '빙하와 화산이 공존하는 섬나라로, 풍부한 지하 지열 에너지를 이용한 친환경 난방과 온실 농업을 합니다.',
-    quiz: {
-      question: '‘불과 얼음의 나라’로 불리며, 풍부한 화산 지열을 이용해 난방과 온실 농업을 하는 나라는?',
-      options: ['아이슬란드', '사우디아라비아', '케냐'],
-      answer: '아이슬란드',
-      explanation: '아이슬란드는 빙하와 화산이 공존하는 곳으로, 땅속의 뜨거운 지하수와 마그마 열을 활용한 친환경 지열 발전과 난방이 매우 발달했습니다.'
-    }
-  },
-  { name: '지형 퀴즈', symbol: '⛰️', type: 'special-landform', tag: '지형탐험', isSpecial: true, cost: 0,
-    desc: '산지, 하천, 해안, 화산 등 지구상의 다양한 지형 경관 퀴즈를 풀고 장학금 ₩30,000을 획득하는 특수칸입니다.' },
-  { name: '스위스', symbol: '△', type: 'accent-yellow', tag: '알프스고산', cost: 70000,
-    desc: '험준한 알프스 산지 지형을 산악 톱니바퀴 열차와 케이블카로 극복하여 세계적인 산악 관광국이 되었습니다.',
-    quiz: {
-      question: '스위스 알프스 산지 지형에서 눈 덮인 산을 오르내리며 관광객을 수송하는 대표적인 교통수단은?',
-      options: ['산악 열차와 케이블카', '낙타 대상', '대형 유조선'],
-      answer: '산악 열차와 케이블카',
-      explanation: '스위스는 험준한 알프스 산지를 극복하기 위해 톱니바퀴 산악 열차와 케이블카를 건설하여 세계적인 산악 관광 대국이 되었습니다.'
-    }
-  },
-  { name: '이집트', symbol: '◌', type: 'accent-mint', tag: '건조/사막', cost: 55000,
-    desc: '사막 기후로 일교차가 커서 두꺼운 흙벽돌과 작은 창문의 가옥을 짓고 나일강 주변에서 관개 농업을 합니다.',
-    quiz: {
-      question: '이집트와 같은 건조 기후 지역에서 낮의 뜨거운 열기와 밤의 추위를 막기 위해 짓는 집의 특징은?',
-      options: ['벽이 두껍고 창문이 작으며 지붕이 평평하다.', '유리로 사방이 트여 있다.', '벽을 얇은 천으로만 만든다.'],
-      answer: '벽이 두껍고 창문이 작으며 지붕이 평평하다.',
-      explanation: '건조 기후 지역은 비가 거의 오지 않고 일교차가 매우 크므로, 흙벽돌로 두꺼운 벽을 쌓고 모래바람과 햇빛을 막기 위해 창문을 작게 만듭니다.'
-    }
-  },
-  { name: '사우디', symbol: '≈', type: 'accent-mint', tag: '오아시스', cost: 60000,
-    desc: '광활한 사막 가운데 지하수가 솟아나는 오아시스를 중심으로 대추야자를 재배하고 촌락을 형성합니다.',
-    quiz: {
-      question: '사막 지대에서 지하수가 솟아나와 물을 얻을 수 있어 대추야자를 재배하고 사람이 모여 사는 곳은?',
-      options: ['오아시스', '피오르', '빙하'],
-      answer: '오아시스',
-      explanation: '사막 가운데 물이 있는 오아시스 주변에서는 대추야자나 밀 등을 재배하는 오아시스 농업이 이루어지고 취락이 형성됩니다.'
-    }
-  },
-  { name: '케냐', symbol: '✦', type: 'accent-mint', tag: '열대사바나', cost: 50000,
-    desc: '건기와 우기가 뚜렷한 사바나 초원 지대에서 야생동물을 보호하며 진행하는 사파리 생태 관광이 활발합니다.',
-    quiz: {
-      question: '케냐의 열대 사바나 기후 지역에서 사자, 얼룩말, 기린 등 야생동물을 관찰하는 관광 활동은?',
-      options: ['사파리 관광', '빙하 트레킹', '스키 투어'],
-      answer: '사파리 관광',
-      explanation: '건기와 우기가 뚜렷한 열대 사바나 초원 지대에는 다양한 초식동물과 맹수가 서식하여 국립공원을 둘러보는 사파리 생태 관광이 활발합니다.'
-    }
-  },
-  { name: '콩고(공)', symbol: '◆', type: 'accent-mint', tag: '콩고강어업', cost: 45000,
-    desc: '콩고강 급류의 바위틈에 거대한 대나무 원뿔형 통발 어구를 설치해 물고기를 잡는 전통 어업이 유명합니다.',
-    quiz: {
-      question: '교과서에 소개된 콩고강 급류에서 주민들이 물고기를 잡기 위해 사용하는 독특한 전통 어구는?',
-      options: ['거대한 대나무 원뿔형 통발/그물', '다이너마이트', '얼음 낚싯대'],
-      answer: '거대한 대나무 원뿔형 통발/그물',
-      explanation: '콩고 민주 공화국 와게니아족 주민들은 콩고강 급류 바위틈에 거대한 나무 구조물과 대나무 원뿔형 통발을 설치해 물고기를 잡습니다.'
-    }
-  },
-  { name: '모로코', symbol: '☾', type: 'accent-mint', tag: '사하라관문', cost: 50000,
-    desc: '사하라 사막의 강한 자외선과 모래바람을 막기 위해 온몸을 헐렁하게 감싸는 전통 의상 젤라바를 입습니다.',
-    quiz: {
-      question: '모로코 등 북아프리카 건조 지역에서 강한 햇빛과 모래바람을 막기 위해 온몸을 감싸는 옷은?',
-      options: ['젤라바(헐렁하고 긴 전통 옷)', '패딩 점퍼', '수영복'],
-      answer: '젤라바(헐렁하고 긴 전통 옷)',
-      explanation: '건조 기후 지역에서는 강한 자외선과 모래 먼지를 막고 땀 증발을 돕기 위해 온몸을 헐렁하게 감싸는 긴 옷을 입습니다.'
-    }
-  },
-  { name: '네팔', symbol: '♧', type: 'accent-mint', tag: '히말라야', cost: 55000,
-    desc: '세계 최고봉 에베레스트산이 있는 고산 지대로, 등산객의 안전한 등반을 돕는 셰르파의 터전입니다.',
-    quiz: {
-      question: '네팔 히말라야산맥의 에베레스트산을 오르는 등산객들의 짐을 나르고 길을 안내하는 고산 족은?',
-      options: ['셰르파', '이누이트', '베두인'],
-      answer: '셰르파',
-      explanation: '네팔 고산 산지 지형에 사는 셰르파는 높은 해발 고도의 희박한 공기에 적응되어 등산객의 등반을 돕는 필수적인 역할을 합니다.'
-    }
-  },
-  { name: '생태 쉼터', symbol: '🌿', type: 'special-eco', tag: '지구촌보호', isSpecial: true, cost: 0,
-    desc: '지구촌 환경 보전 쉼터입니다. 자연을 가꾸고 환경을 지킨 보답으로 환경 보너스 ₩20,000을 받습니다.' },
-  { name: '브라질', symbol: '●', type: 'accent-pink', tag: '이구아수/아마존', cost: 65000,
-    desc: '세계 최대 하천인 아마존강과 세계 3대 폭포인 거대한 이구아수 폭포 지형 경관을 품고 있습니다.',
-    quiz: {
-      question: '브라질과 아르헨티나 국경에 위치한 거대한 폭포로, 세계 3대 폭포 중 하나인 지형 경관은?',
-      options: ['이구아수 폭포', '나이아가라 폭포', '빅토리아 폭포'],
-      answer: '이구아수 폭포',
-      explanation: '이구아수 폭포는 거대한 하천 지형이 만들어낸 웅장한 폭포로, 유네스코 세계자연유산으로 지정된 세계적 관광 명소입니다.'
-    }
-  },
-  { name: '페루', symbol: '◆', type: 'accent-pink', tag: '안데스고산', cost: 55000,
-    desc: '해발 고도가 높은 안데스 고산 지대에서 알파카/라마 털로 짠 두꺼운 망토 모양 판초를 입고 생활합니다.',
-    quiz: {
-      question: '페루 안데스 고산 지대에서 춥고 일교차가 큰 날씨를 견디기 위해 입는 가운데 구멍이 뚫린 전통 옷은?',
-      options: ['판초(Poncho)', '기모노', '사리'],
-      answer: '판초(Poncho)',
-      explanation: '해발 고도가 높은 안데스 고산 지대 주민들은 알파카나 라마의 털로 짠 두꺼운 망토 모양의 판초를 입어 체온을 유지합니다.'
-    }
-  },
-  { name: '멕시코', symbol: '✦', type: 'accent-pink', tag: '열대/고산', cost: 50000,
-    desc: '가뭄에 잘 견디는 옥수수를 주식으로 토르티야 등을 만들어 먹는 전통 음식 문화가 발달했습니다.',
-    quiz: {
-      question: '멕시코 등 아메리카 원산지로, 가뭄에 강해 전통 주식인 토르티야의 재료로 널리 쓰이는 작물은?',
-      options: ['옥수수', '쌀', '대추야자'],
-      answer: '옥수수',
-      explanation: '옥수수는 멕시코 고대 문명 때부터 재배된 주식 작물로, 옥수숫가루를 반죽해 얇게 구운 토르티야는 대표적인 멕시코 전통 음식입니다.'
-    }
-  },
-  { name: '미국', symbol: '△', type: 'accent-pink', tag: '평야/농업', cost: 80000,
-    desc: '일리노이강 주변 등 비옥한 대평원에서 대형 농기계와 비행기를 활용한 대규모 기업적 농업을 합니다.',
-    quiz: {
-      question: '미국 일리노이강 주변 등 비옥한 대평원에서 대형 농기계와 비행기를 활용하여 이루어지는 농업 형태는?',
-      options: ['대규모 상업적/기업적 농업', '전통 화전 농업', '계단식 논농사'],
-      answer: '대규모 상업적/기업적 농업',
-      explanation: '미국의 넓은 평야 지형에서는 트랙터, 콤바인, 비행기를 이용해 파종과 농약을 뿌리는 대규모 기업적 곡물 농업이 발달했습니다.'
-    }
-  },
-  { name: '캐나다', symbol: '◇', type: 'accent-pink', tag: '냉대/침엽수', cost: 70000,
-    desc: '겨울이 긴 냉대 기후로 타이가 침엽수림을 활용한 통나무집 건축과 목재/펄프 산업이 발달했습니다.',
-    quiz: {
-      question: '캐나다의 냉대 기후 지역에 넓게 펼쳐진 침엽수림(타이가)을 활용하여 발달한 대표적인 산업은?',
-      options: ['임업 및 목재/펄프 가공업', '대추야자 재배업', '산호초 양식업'],
-      answer: '임업 및 목재/펄프 가공업',
-      explanation: '냉대 기후 지역의 타이가(침엽수림)는 목재가 단단하고 질이 좋아 통나무집 건축과 가구, 종이 펄프 제조 산업이 크게 발달했습니다.'
-    }
-  },
-  { name: '호주', symbol: '♧', type: 'accent-blue', tag: '산호초해안', cost: 70000,
-    desc: '북동부 해안에 세계 최대 산호초 지대인 그레이트 배리어 리프가 있어 해양 생태계 관광이 발달했습니다.',
-    quiz: {
-      question: '호주 북동부 해안에 위치한 세계 최대의 산호초 지대로 해양 생태계의 보고인 곳은?',
-      options: ['그레이트 배리어 리프(대보초)', '사하라 사막', '에베레스트산'],
-      answer: '그레이트 배리어 리프(대보초)',
-      explanation: '그레이트 배리어 리프는 수많은 산호초와 해양 생물이 서식하는 세계 최대의 해안 지형으로 스쿠버 다이빙 등 관광 명소입니다.'
-    }
-  },
-  { name: '뉴질랜드', symbol: '▤', type: 'accent-blue', tag: '빙하/화산', cost: 65000,
-    desc: '화산 활동으로 뿜어져 나오는 간헐천과 빙하 호수가 공존하는 경이로운 자연 지형의 나라입니다.',
-    quiz: {
-      question: '뉴질랜드에서 화산 활동으로 인해 지하에서 뜨거운 온천수와 수증기가 주기적으로 뿜어져 나오는 지형은?',
-      options: ['간헐천', '사구', '염전'],
-      answer: '간헐천',
-      explanation: '뉴질랜드 북섬 로토루아 등 화산 지대에서는 간헐천과 머드 풀이 발달하여 독특한 자연 지형 관광 자원으로 활용됩니다.'
-    }
-  }
+  { name: '출발지', symbol: '🚩', type: 'special-start', tag: '시작점', isSpecial: true, cost: 0, photo: null,
+    desc: '세계 일주가 시작되고 끝나는 곳입니다. 보드를 한 바퀴 돌아 이곳을 지나갈 때마다 월급 ₩70,000을 받고, 주사위 눈이 딱 맞아 이 칸에 정확히 도착하면 완주 보너스 ₩30,000을 더 받습니다. 모든 탐험가는 여기에서 출발해 아시아, 유럽, 아프리카, 아메리카, 오세아니아를 차례로 여행하게 됩니다.' },
+
+  { name: '한국', symbol: '◒', type: 'accent-blue', tag: '온대계절풍', cost: 70000, photo: 'images/korea.jpg', code: 'kr', lat: 36.5, lon: 127.8,
+    desc: '중위도에 자리해 사계절이 뚜렷한 온대 계절풍 기후입니다. 여름에는 남동쪽 바다에서 덥고 습한 계절풍이 불어와 기온이 높고 비가 많이 내리며, 겨울에는 북서쪽 대륙에서 차갑고 건조한 바람이 붑니다. 국토의 70%가 산지여서 뒤에 산을 두고 앞에 하천을 둔 배산임수 자리에 마을을 이루었고, 남쪽의 넓은 평야에서는 벼농사가 발달했습니다. 추운 겨울을 나기 위한 온돌과 김장은 기후에 적응한 대표적인 생활 문화입니다.' },
+  { name: '일본', symbol: '✿', type: 'accent-blue', tag: '화산/온천', cost: 65000, photo: 'images/japan.jpg', code: 'jp', lat: 36.2, lon: 138.3,
+    desc: '네 개의 큰 섬과 수천 개의 작은 섬으로 이루어진 섬나라로, 여러 판이 부딪치는 경계에 놓여 있습니다. 그래서 화산과 지진이 매우 잦고, 후지산 같은 원뿔 모양 화산과 곳곳의 온천이 만들어졌습니다. 지진에 대비해 흔들림을 견디는 건물을 짓고 학교에서 대피 훈련을 자주 합니다. 사방이 바다라 신선한 해산물을 쉽게 구할 수 있어 초밥과 회 같은 음식 문화가 발달했습니다.' },
+  { name: '베트남', symbol: '✦', type: 'accent-blue', tag: '열대계절풍', cost: 50000, photo: 'images/vietnam.jpg', code: 'vn', lat: 16.0, lon: 107.0,
+    desc: '남북으로 길게 뻗은 나라로, 고온 다습한 열대 계절풍 기후가 나타나 우기와 건기가 뚜렷합니다. 남부의 메콩강 하구에는 강물이 실어 온 흙이 쌓여 만들어진 넓고 비옥한 삼각주가 펼쳐집니다. 일 년 내내 기온이 높아 같은 땅에서 벼를 두세 번 심고 거두는 2기작과 3기작이 이루어집니다. 강한 햇빛과 소나기를 함께 막아 주는 원뿔 모양 모자 논라를 쓰고, 물가에는 수상 가옥을 지어 살아갑니다.' },
+  { name: '태국', symbol: '◆', type: 'accent-blue', tag: '열대/하천', cost: 55000, photo: 'images/thailand.jpg', code: 'th', lat: 15.0, lon: 101.0,
+    desc: '일 년 내내 덥고 비가 많은 열대 기후로, 망고와 두리안 같은 열대 과일이 잘 자랍니다. 수도 방콕을 흐르는 짜오프라야강과 여기서 갈라진 수많은 운하가 사람과 물건을 실어 나르는 길이 되어, 배 위에서 물건을 사고파는 수상 시장 문화가 자리 잡았습니다. 우기에 비가 집중되면 하천이 넘쳐 홍수가 잦기 때문에 바닥을 땅에서 띄운 고상 가옥을 짓습니다. 국민 대부분이 불교를 믿어 황금빛 사원이 많고 중요한 관광 자원이 되었습니다.' },
+  { name: '필리핀', symbol: '◇', type: 'accent-blue', tag: '해안/환경', cost: 45000, photo: 'images/philippines.jpg', code: 'ph', lat: 12.9, lon: 122.0,
+    desc: '7,000개가 넘는 섬으로 이루어진 섬나라로, 바다의 영향을 받아 일 년 내내 덥고 기온 차가 작습니다. 얕고 따뜻한 바다에는 산호초가 발달해 수많은 바다 생물의 보금자리가 되고 파도를 막아 줍니다. 보라카이섬은 아름다운 백사장으로 유명하지만 지나친 관광 개발과 쓰레기 오염 때문에 섬을 일시적으로 닫고 정화 작업을 했습니다. 태풍이 지나는 길목에 있어 해마다 강한 바람과 폭우 피해에 대비합니다.' },
+  { name: '인도네시아', symbol: '●', type: 'accent-blue', tag: '열대우림', cost: 50000, photo: 'images/indonesia.jpg', code: 'id', lat: -2.2, lon: 117.9,
+    desc: '적도가 나라를 가로질러 일 년 내내 덥고 비가 많은 열대 우림 기후가 나타나며, 오후마다 스콜이라는 짧고 강한 소나기가 쏟아집니다. 땅에서 올라오는 열기와 습기, 뱀과 해충을 피하려고 기둥을 세워 바닥을 높인 고상 가옥을 짓고, 지붕은 비가 잘 흘러내리도록 경사를 급하게 만듭니다. 여러 판이 만나는 불의 고리에 속해 화산이 많은데, 화산재가 쌓인 땅은 농사에 유리하기도 합니다. 다만 농장 개발과 벌목으로 열대 우림이 빠르게 줄어드는 문제를 안고 있습니다.' },
+  { name: '인도', symbol: '↗', type: 'accent-blue', tag: '몬순/하천', cost: 60000, photo: 'images/india.jpg', code: 'in', lat: 21.0, lon: 78.0,
+    desc: '계절에 따라 방향이 바뀌는 계절풍의 영향을 크게 받아, 여름 계절풍이 바다에서 습기를 몰고 와 많은 비를 뿌립니다. 히말라야의 눈과 빙하가 녹은 물이 큰 하천을 이루어 북부에 넓고 비옥한 평야를 만들었습니다. 그중 갠지스강은 농사와 생활에 물을 대 줄 뿐 아니라 힌두교도들이 성스럽게 여겨 목욕 의식을 치르는 강입니다. 더운 기후에서 음식이 상하는 것을 늦추려고 향신료를 많이 쓰고, 통풍이 잘되는 긴 천을 몸에 둘러 입는 사리를 입습니다.' },
+
+  { name: '기후 퀴즈', symbol: '🌍', type: 'special-climate', tag: '기후탐험', isSpecial: true, cost: 0, photo: null,
+    desc: '세계의 기후를 탐구하는 특수칸입니다. 열대, 건조, 온대, 냉대, 한대, 고산 기후의 특징과 그 속에서 살아가는 사람들의 의식주 생활에 대한 문제가 나옵니다. 문제를 맞히면 탐험 장학금 ₩30,000을 받습니다. 위도와 해발 고도, 바다와의 거리가 기후를 어떻게 바꾸는지 떠올리며 풀어 보세요.' },
+
+  { name: '이탈리아', symbol: '●', type: 'accent-yellow', tag: '지중해성', cost: 65000, photo: 'images/italy.jpg', code: 'it', lat: 42.8, lon: 12.6,
+    desc: '지중해로 길게 뻗은 장화 모양의 반도 나라로, 여름에는 덥고 건조하며 겨울에 비가 내리는 지중해성 기후입니다. 여름 가뭄을 견디도록 잎이 작고 두꺼운 올리브와 포도, 오렌지를 기르는 수목 농업이 발달했습니다. 밀과 올리브유, 토마토가 풍부해 파스타와 피자 같은 음식 문화가 만들어져 세계로 퍼졌습니다. 로마의 콜로세움을 비롯한 유적과 물 위의 도시 베네치아는 오늘날 중요한 관광 자원입니다.' },
+  { name: '그리스', symbol: '△', type: 'accent-yellow', tag: '지중해섬', cost: 60000, photo: 'images/greece.jpg', code: 'gr', lat: 39.1, lon: 22.0,
+    desc: '에게해에 수많은 섬이 흩어져 있어 예로부터 배가 오가며 해상 무역과 해운업이 발달했습니다. 지중해성 기후라 여름이 덥고 건조한데, 강한 햇빛과 열기를 반사해 실내를 시원하게 하려고 집 외벽을 하얗게 칠합니다. 산이 많고 평야가 좁아 곡물 농사 대신 올리브를 길러 기름을 짜서 요리에 두루 씁니다. 아테네의 파르테논 신전 같은 고대 유적과 맑고 건조한 여름 날씨가 함께 어우러져 관광객이 많이 찾습니다.' },
+  { name: '프랑스', symbol: '✦', type: 'accent-yellow', tag: '서안해양성', cost: 75000, photo: 'images/france.jpg', code: 'fr', lat: 46.6, lon: 2.4,
+    desc: '서쪽에서 부는 편서풍이 따뜻한 북대서양 해류 위를 지나며 열과 습기를 실어 와, 여름은 서늘하고 겨울은 온화하며 비가 고르게 내리는 서안 해양성 기후가 나타납니다. 파리 분지의 넓고 평평한 평야에서는 유럽 최대 규모로 밀을 생산합니다. 남부는 지중해의 영향을 받아 포도가 잘 자라며 이를 이용한 포도주 생산이 지역의 대표 산업이 되었습니다. 알프스산맥과 에펠탑, 루브르 박물관 등 자연과 문화 자원이 풍부해 세계에서 관광객이 가장 많이 찾는 나라 가운데 하나입니다.' },
+  { name: '영국', symbol: '◇', type: 'accent-yellow', tag: '서안해양성', cost: 70000, photo: 'images/uk.jpg', code: 'gb', lat: 54.0, lon: -2.4,
+    desc: '섬나라이면서 편서풍과 따뜻한 해류의 영향을 받아, 위도가 높은데도 겨울이 우리나라보다 온화합니다. 바다의 습기 때문에 안개가 끼고 보슬비가 자주 내려 우산과 방수 코트가 일상 필수품이 되었고, 흐리고 서늘한 날씨 속에서 오후에 차를 마시는 문화가 자리 잡았습니다. 비가 계절에 관계없이 고르게 내려 풀이 마르지 않으므로 목초지와 낙농업이 발달했습니다. 석탄과 철이 풍부하고 항구가 발달한 조건을 바탕으로 세계 최초로 산업 혁명이 일어난 곳이기도 합니다.' },
+  { name: '독일', symbol: '♢', type: 'accent-yellow', tag: '하천교통', cost: 65000, photo: 'images/germany.jpg', code: 'de', lat: 51.1, lon: 10.4,
+    desc: '유럽 한가운데에 자리해 여러 나라와 국경을 맞대고 있어 도로와 철도, 하천이 모이는 교통의 요지입니다. 나라를 가로지르는 라인강은 여러 나라를 거쳐 흐르는 국제 하천으로, 화물선이 오가는 수상 교통의 대동맥 역할을 합니다. 석탄이 풍부하고 라인강 수운을 쓸 수 있는 루르 지역에는 제철과 기계 공업이 크게 발달했고, 그 전통 위에서 세계적인 자동차 산업이 자랐습니다. 남서부에는 침엽수가 우거진 흑림이 넓게 펼쳐져 목재와 관광 자원이 됩니다.' },
+  { name: '노르웨이', symbol: '▣', type: 'accent-yellow', tag: '피오르', cost: 65000, photo: 'images/norway.jpg', code: 'no', lat: 61.5, lon: 9.0,
+    desc: '과거 빙하가 깎아 만든 깊은 U자 골짜기에 바닷물이 차오르면서 절벽이 솟은 피오르 해안이 발달했습니다. 하천이 만드는 V자곡과 달리 빙하는 바닥을 넓게 갈아 U자 모양 골짜기를 남깁니다. 파도가 잔잔하고 물이 차가운 피오르는 연어를 기르기에 알맞아 세계적인 연어 수출국이 되었습니다. 산이 높고 비와 눈이 많아 전기의 대부분을 수력 발전으로 얻으며, 북극권에서는 여름에 해가 지지 않는 백야와 겨울밤의 오로라를 볼 수 있습니다.' },
+  { name: '아이슬란드', symbol: '☕', type: 'accent-yellow', tag: '화산/지열', cost: 60000, photo: 'images/iceland.jpg', code: 'is', lat: 64.9, lon: -18.6,
+    desc: '대서양 한가운데 판이 서로 갈라지는 경계 위에 있어 마그마가 솟아오르며 화산과 온천이 발달한, 불과 얼음의 나라입니다. 땅속에서 데워진 지하수가 압력을 받아 주기적으로 솟구치는 간헐천이 대표적인 관광 자원입니다. 석유나 석탄을 태우는 대신 땅속 열을 그대로 쓰는 지열 발전으로 난방을 해결하고, 그 열로 온실을 데워 추운 곳에서도 채소를 기릅니다. 빙하 아래에서 화산이 터지면 얼음이 빠르게 녹아 큰 홍수가 나기도 합니다.' },
+
+  { name: '지형 퀴즈', symbol: '⛰️', type: 'special-landform', tag: '지형탐험', isSpecial: true, cost: 0, photo: null,
+    desc: '지구의 다양한 지형을 탐구하는 특수칸입니다. 산지와 하천, 해안, 화산, 빙하가 만들어 낸 지형과 그것을 이용하는 사람들의 생활에 대한 문제가 나옵니다. 문제를 맞히면 탐험 장학금 ₩30,000을 받습니다. 삼각주, 피오르, 갯벌, 협곡처럼 무엇이 어떻게 깎고 쌓아 만든 지형인지 생각하며 풀어 보세요.' },
+
+  { name: '스위스', symbol: '△', type: 'accent-yellow', tag: '알프스', cost: 70000, photo: 'images/switzerland.jpg', code: 'ch', lat: 46.8, lon: 8.2,
+    desc: '바다와 맞닿은 곳이 전혀 없는 내륙국이면서 국토 대부분이 험준한 알프스 산지입니다. 해발 고도가 100m 높아질 때마다 기온이 약 0.6도씩 낮아지므로 같은 지역이라도 산 위와 아래의 기후가 다릅니다. 경사진 땅은 밭농사에 불리하지만 풀은 잘 자라, 여름에 높은 초원에서 소를 기르고 우유로 치즈를 만드는 낙농업이 발달했습니다. 톱니바퀴 산악 열차와 케이블카로 험한 지형을 극복해 겨울에는 스키, 여름에는 등산 관광이 일 년 내내 이어집니다.' },
+  { name: '이집트', symbol: '◌', type: 'accent-mint', tag: '건조/사막', cost: 55000, photo: 'images/egypt.jpg', code: 'eg', lat: 26.8, lon: 29.9,
+    desc: '국토 대부분이 사막인 건조 기후 지역이지만, 사막 한가운데를 흐르는 나일강이 물과 비옥한 흙을 가져다주어 문명이 자랐습니다. 강물을 끌어와 농경지에 대는 관개 농업 덕분에 비가 거의 오지 않는 땅에서도 농사를 지을 수 있습니다. 구름과 수증기가 적어 낮에는 몹시 덥고 밤에는 갑자기 추워지므로, 흙벽돌로 벽을 두껍게 쌓고 창문을 작게 내어 열기와 모래바람을 막습니다. 나일강 유역의 피라미드는 고대 문명을 보여 주는 유산이자 중요한 관광 자원입니다.' },
+  { name: '사우디', symbol: '≈', type: 'accent-mint', tag: '오아시스', cost: 60000, photo: 'images/saudi.jpg', code: 'sa', lat: 24.0, lon: 45.0,
+    desc: '내리는 비보다 증발하는 물이 더 많은 건조 기후로, 국토 대부분이 모래와 자갈로 덮인 사막입니다. 사막 가운데 지하수가 솟아나는 오아시스 주변에서는 대추야자와 밀을 기르는 오아시스 농업이 이루어지고 사람들이 모여 마을을 이룹니다. 대추야자는 뿌리를 깊이 뻗어 지하수를 빨아들이고 강한 햇빛을 잘 견뎌 이곳에서 기르기에 알맞습니다. 물과 풀을 찾아 가축을 몰고 옮겨 다니는 유목 생활이 이어져 왔고, 사막 아래 묻힌 석유가 개발되면서 나라의 모습이 크게 바뀌었습니다.' },
+  { name: '케냐', symbol: '✦', type: 'accent-mint', tag: '사바나', cost: 50000, photo: 'images/kenya.jpg', code: 'ke', lat: 0.5, lon: 37.9,
+    desc: '적도 부근에 있지만 국토의 상당 부분이 높은 고원이라 수도 나이로비처럼 연중 서늘한 곳이 많습니다. 비가 집중되는 우기와 비가 거의 오지 않는 건기가 뚜렷한 열대 사바나 기후로, 키 큰 풀 사이에 나무가 드문드문 서 있는 초원이 펼쳐집니다. 초식동물과 맹수가 함께 살아가 국립공원을 둘러보며 야생동물을 관찰하는 사파리 생태 관광이 활발합니다. 서늘하고 물이 잘 빠지는 고원에서는 커피와 차를 길러 세계로 수출합니다.' },
+  { name: '콩고(공)', symbol: '◆', type: 'accent-mint', tag: '콩고강', cost: 45000, photo: 'images/congo.jpg', code: 'cd', lat: -2.9, lon: 23.6,
+    desc: '적도가 지나 일 년 내내 덥고 비가 많아, 세계에서 두 번째로 넓은 열대 우림이 펼쳐집니다. 나무들이 이산화 탄소를 빨아들이고 산소를 내보내 지구의 허파라 불리며, 숲을 지키는 일은 기후 변화를 늦추는 데 도움이 됩니다. 경사가 급한 곳에서 물살이 빨라진 콩고강 급류의 바위틈에는 주민들이 거대한 나무 구조물과 대나무 원뿔형 통발을 설치해 물고기를 잡는 전통 어업이 이어집니다. 덥고 습한 기후에서 잘 자라고 척박한 땅도 견디는 카사바가 중요한 식량입니다.' },
+  { name: '모로코', symbol: '☾', type: 'accent-mint', tag: '사하라', cost: 50000, photo: 'images/morocco.jpg', code: 'ma', lat: 31.8, lon: -6.5,
+    desc: '북쪽 해안은 겨울에 비가 내리는 지중해성 기후라 올리브와 밀을 기를 수 있지만, 아틀라스산맥 남쪽은 세계에서 가장 넓은 사하라 사막이 시작되는 매우 건조한 땅입니다. 한 나라 안에서도 산맥을 경계로 기후와 농사 모습이 크게 달라집니다. 강한 자외선과 모래바람을 막고 땀이 잘 증발하도록 온몸을 헐렁하게 감싸는 긴 전통 옷 젤라바를 입습니다. 옛날에는 낙타를 이끈 대상이 오아시스를 따라 사막을 건너며 소금과 금을 실어 날랐고, 그 길목에 시장과 도시가 자랐습니다.' },
+  { name: '네팔', symbol: '♧', type: 'accent-mint', tag: '히말라야', cost: 55000, photo: 'images/nepal.jpg', code: 'np', lat: 28.3, lon: 84.1,
+    desc: '인도판이 유라시아판과 부딪쳐 밀어 올린 히말라야산맥이 나라 북쪽을 가로지르며, 세계 최고봉 에베레스트산이 자리합니다. 산맥은 지금도 조금씩 높아지고 있습니다. 고도가 높아질수록 공기가 희박해지고 기온이 낮아지는데, 이곳에 사는 셰르파는 그 환경에 적응해 등산객의 짐을 나르고 길을 안내합니다. 산비탈을 계단처럼 깎아 만든 계단식 경작지는 빗물에 흙이 쓸려 내려가는 것을 막고 물을 가두어 농사를 가능하게 합니다.' },
+
+  { name: '생태 쉼터', symbol: '🌿', type: 'special-eco', tag: '보너스카드', isSpecial: true, cost: 0, photo: null,
+    desc: '지구촌 환경을 지키는 쉼터입니다. 이 칸에 도착하면 보너스 카드를 한 장 뽑습니다. 통행세를 한 번 내지 않아도 되는 면제권, 건물을 공짜로 짓는 무료 증축권, 땅을 절반 값에 사는 반값 매입권, 출발지로 이동, 원하는 나라로 날아가는 여행권, 환경 장학금, 한 번 더 굴리기, 가진 땅마다 지원금을 받는 숲 보호 보너스까지 여덟 가지가 들어 있습니다.' },
+
+  { name: '브라질', symbol: '●', type: 'accent-pink', tag: '아마존강', cost: 65000, photo: 'images/brazil.jpg', code: 'br', lat: -10.3, lon: -53.1,
+    desc: '흐르는 물의 양이 세계에서 가장 많은 아마존강이 흐르며, 그 주변에 지구에서 가장 넓은 열대 우림이 펼쳐집니다. 이 숲은 이산화 탄소를 흡수하고 산소를 내보내 지구 전체의 공기와 기후에 큰 영향을 주지만, 목장과 농장을 넓히려는 개발로 빠르게 줄어들고 있습니다. 아르헨티나와의 국경에는 하천이 만들어 낸 웅장한 이구아수 폭포가 있어 세계자연유산으로 지정되었습니다. 남동부의 서늘한 고원에서는 커피가 잘 자라 세계 최대의 커피 생산국이 되었습니다.' },
+  { name: '페루', symbol: '◆', type: 'accent-pink', tag: '안데스', cost: 55000, photo: 'images/peru.jpg', code: 'pe', lat: -9.8, lon: -75.5,
+    desc: '남아메리카 서쪽을 남북으로 약 7,000km 뻗은 안데스산맥이 사람들의 생활을 좌우합니다. 적도에 가까운 저위도인데도 해발 고도가 높아 일 년 내내 봄 같은 고산 기후가 나타나며, 그런 곳에 큰 도시가 자리하기도 합니다. 춥고 일교차가 큰 날씨를 견디려고 알파카와 라마의 털로 짠 두꺼운 망토 판초를 입고, 이 가축들에게 짐을 나르게 합니다. 서늘한 고산 지대에서 처음 재배되어 세계로 퍼진 감자의 원산지이며, 산등성이에 세운 잉카의 도시 마추픽추가 남아 있습니다.' },
+  { name: '멕시코', symbol: '✦', type: 'accent-pink', tag: '열대/고산', cost: 50000, photo: 'images/mexico.jpg', code: 'mx', lat: 23.6, lon: -102.5,
+    desc: '북부는 비가 적은 건조 지역이라 잎을 가시로 바꾸고 두꺼운 줄기에 물을 저장하는 선인장이 자랍니다. 수도 멕시코시티는 해발 2,000m가 넘는 고원에 있어 저위도인데도 서늘하고 살기 좋습니다. 가뭄에 강한 옥수수는 고대 문명 때부터 길러 온 주식으로, 옥수숫가루를 얇게 펴서 구운 토르티야는 밥과 같은 역할을 합니다. 옥수수 농사를 바탕으로 큰 도시와 신전을 세운 마야와 아스텍 문명의 피라미드가 오늘날까지 남아 있고, 강한 햇빛을 막는 챙 넓은 모자 솜브레로가 유명합니다.' },
+  { name: '미국', symbol: '△', type: 'accent-pink', tag: '평야/농업', cost: 80000, photo: 'images/usa.jpg', code: 'us', lat: 39.5, lon: -98.4,
+    desc: '국토가 매우 넓어 위도와 고도, 바다와의 거리에 따라 열대부터 한대까지 다양한 기후가 나타납니다. 중앙부에는 넓고 평평한 대평원이 펼쳐져 세계적인 곡창 지대가 되었고, 큰 농기계와 비행기를 이용해 적은 사람으로 아주 넓은 면적을 짓는 기업적 농업이 발달했습니다. 여러 지류를 모아 흐르는 미시시피강은 내륙 수운의 중심이 되어 대평원의 곡물을 항구까지 실어 나릅니다. 콜로라도강이 오랜 세월 땅을 깎아 만든 그랜드 캐니언은 하천 침식이 만든 대표적인 지형입니다.' },
+  { name: '캐나다', symbol: '◇', type: 'accent-pink', tag: '냉대침엽', cost: 70000, photo: 'images/canada.jpg', code: 'ca', lat: 56.1, lon: -106.3,
+    desc: '위도가 높아 겨울이 춥고 길며 눈이 오래 쌓여 있는 냉대 기후가 넓게 나타납니다. 잎이 좁고 뾰족해 수분 손실이 적고 눈이 잘 미끄러지는 침엽수가 잘 자라 타이가라 불리는 거대한 숲을 이룹니다. 이 목재는 단단하고 질이 좋아 통나무집 건축과 가구, 종이 펄프를 만드는 임업이 크게 발달했습니다. 서부의 로키산맥에는 만년설과 빙하가 녹아 만든 호수가 있어 손꼽히는 자연 관광지가 되었고, 단풍나무 수액을 졸여 만든 메이플 시럽이 특산물입니다.' },
+  { name: '호주', symbol: '♧', type: 'accent-blue', tag: '산호초', cost: 70000, photo: 'images/australia.jpg', code: 'au', lat: -25.3, lon: 133.4,
+    desc: '남반구에 있어 북반구와 계절이 반대라 한여름에 크리스마스를 맞이합니다. 내륙에는 비가 매우 적어 붉은 흙과 관목만 보이는 아웃백이 넓게 펼쳐지고, 그 한가운데 오랜 풍화와 침식을 견디고 남은 거대한 바위 울루루가 솟아 있습니다. 건조한 초원은 풀을 뜯는 양을 기르기에 알맞아 세계적인 양모 생산국이 되었습니다. 북동부 해안의 그레이트 배리어 리프는 세계 최대의 산호초 지대이며, 오랫동안 다른 대륙과 떨어져 있어 캥거루와 코알라 같은 고유한 동물이 살아남았습니다.' },
+  { name: '뉴질랜드', symbol: '▤', type: 'accent-blue', tag: '빙하/화산', cost: 65000, photo: 'images/newzealand.jpg', code: 'nz', lat: -41.3, lon: 172.8,
+    desc: '태평양판과 인도-오스트레일리아판이 만나는 경계에 있어 화산과 지진 활동이 활발합니다. 북섬의 로토루아 일대에서는 땅속에서 데워진 물이 주기적으로 솟구치는 간헐천과 머드 풀을 볼 수 있습니다. 남섬 남서부에는 빙하가 파낸 깊은 골짜기에 바닷물이 들어와 절벽이 솟은 피오르가 발달해 있습니다. 바다의 영향과 편서풍 덕분에 연중 온화하고 비가 고르게 내려 풀이 잘 자라므로 양과 소를 기르는 목축업과 유제품 산업이 발달했으며, 원주민 마오리족이 고유한 언어와 문화를 이어 오고 있습니다.' }
 ];
 
-const climateSpecialQuizzes = [
-  {
-    question: '지구상에서 적도에서 극지방으로 갈수록 기온이 점차 낮아지는 근본적인 이유는?',
-    options: ['지구가 둥글어 위도에 따라 햇볕을 받는 양(일사량)이 다르기 때문', '극지방에 얼음이 너무 많아서', '적도 지방에 바람이 불지 않아서'],
-    answer: '지구가 둥글어 위도에 따라 햇볕을 받는 양(일사량)이 다르기 때문',
-    explanation: '지구는 둥근 구형이므로 저위도(적도)는 햇볕을 수직으로 많이 받고, 고위도(극지방)는 비스듬히 적게 받아 기온 차이가 생깁니다.'
-  },
-  {
-    question: '북극과 남극 주변의 한대 기후(툰드라)에서 여름철 얼었던 땅이 녹을 때 건물이 기울어지지 않게 하는 건축 방식은?',
-    options: ['땅속 깊은 영구 동토층까지 단단한 말뚝(기둥)을 박아 짓는다.', '얼음 위에 그대로 집을 얹는다.', '모래로 바닥을 덮는다.'],
-    answer: '땅속 깊은 영구 동토층까지 단단한 말뚝(기둥)을 박아 짓는다.',
-    explanation: '한대 툰드라 지역은 여름에 표면 흙이 녹아 질퍽해지므로, 녹지 않는 깊은 영구 동토층까지 말뚝을 깊이 박아 가옥의 붕괴를 방지합니다.'
-  },
-  {
-    question: '남아메리카 안데스산맥이나 아프리카 킬리만자로처럼 해발 고도가 높아 저위도 열대 지방인데도 연중 봄처럼 온화한 기후는?',
-    options: ['고산 기후', '건조 기후', '냉대 기후'],
-    answer: '고산 기후',
-    explanation: '해발 고도가 1,000m 높아질 때마다 기온이 약 6.5℃씩 낮아지므로, 열대 지방의 높은 산지에서는 사계절 봄 날씨 같은 상춘(常春) 기후가 나타납니다.'
-  }
+// 사진은 images 폴더의 파일을 씁니다. 인터넷이 없거나 학교 망이 막혀도 그대로 보입니다.
+function photoUrl(space) {
+  return space.photo || '';
+}
+
+// ============================================================
+// 문제 출제기 — 한 게임 안에서 같은 문제가 두 번 나오지 않게 관리합니다.
+// ============================================================
+const usedQuizzes = {};
+
+function pickQuiz(poolKey, pool) {
+  if (!pool || !pool.length) return null;
+  if (!usedQuizzes[poolKey]) usedQuizzes[poolKey] = new Set();
+  const used = usedQuizzes[poolKey];
+  if (used.size >= pool.length) used.clear();   // 그 풀을 다 풀었을 때만 초기화
+  const candidates = [];
+  for (let i = 0; i < pool.length; i += 1) if (!used.has(i)) candidates.push(i);
+  const picked = candidates[Math.floor(Math.random() * candidates.length)];
+  used.add(picked);
+  const row = pool[picked];
+  return { key: `${poolKey}#${picked}`, question: row[0], options: row[1], answer: row[1][row[2]], explanation: row[3] };
+}
+
+function countryQuiz(spaceName) { return pickQuiz(spaceName, COUNTRY_QUIZZES[spaceName]); }
+function climateQuiz() { return pickQuiz('__climate', CLIMATE_QUIZZES); }
+function landformQuiz() { return pickQuiz('__landform', LANDFORM_QUIZZES); }
+
+// ============================================================
+// 보너스 카드 (생태 쉼터)
+// ============================================================
+const BONUS_CARDS = [
+  { id: 'toll-free', icon: '🎫', name: '통행세 면제권', keep: true,
+    desc: '다른 사람의 땅에 도착했을 때 통행세를 한 번 내지 않아도 됩니다. 원하는 때에 사용하세요.' },
+  { id: 'free-build', icon: '🏗️', name: '무료 증축권', keep: true,
+    desc: '내 땅에 건물을 한 채 공짜로 지을 수 있습니다. 통행세가 크게 오릅니다.' },
+  { id: 'half-price', icon: '🏷️', name: '반값 매입권', keep: true,
+    desc: '다음에 땅을 살 때 땅값의 절반만 내면 됩니다.' },
+  { id: 'go-start', icon: '🚩', name: '출발지로 이동', keep: false,
+    desc: '지금 바로 출발지로 이동하고 월급 ₩70,000을 받습니다.' },
+  { id: 'go-anywhere', icon: '✈️', name: '세계 어디든 이동', keep: false,
+    desc: '가고 싶은 나라를 골라 그곳으로 바로 이동합니다. 빈 땅이면 퀴즈를 풀고 살 수 있습니다.' },
+  { id: 'scholarship', icon: '💰', name: '환경 장학금', keep: false,
+    desc: '지구를 지킨 보답으로 ₩40,000을 받습니다.' },
+  { id: 'one-more', icon: '🎲', name: '한 번 더 굴리기', keep: false,
+    desc: '이번 차례에 주사위를 한 번 더 굴릴 수 있습니다.' },
+  { id: 'forest', icon: '🌳', name: '숲 보호 보너스', keep: false,
+    desc: '내가 가진 땅 한 곳마다 ₩12,000씩 환경 지원금을 받습니다.' }
 ];
 
-const landformSpecialQuizzes = [
-  {
-    question: '다음 중 강물이 바다나 호수로 흘러들 때 유속이 느려지면서 흙과 모래가 쌓여 형성된 비옥한 평야 지형은?',
-    options: ['삼각주(델타)', '피오르', '사구'],
-    answer: '삼각주(델타)',
-    explanation: '삼각주는 하천 하구에 퇴적물이 쌓여 삼각형 모양으로 만들어진 비옥한 평야로, 벼농사와 농업이 크게 발달합니다.'
-  },
-  {
-    question: '해안가에 갯벌이 넓게 펼쳐진 지형에서 바닷물을 가두어 햇빛과 바람으로 증발시켜 소금을 얻는 시설은?',
-    options: ['염전', '양식장', '수력 발전소'],
-    answer: '염전',
-    explanation: '조수 간만의 차가 크고 갯벌이 발달한 해안에서는 바닷물에서 천일염을 생산하는 염전이 발달합니다.'
-  },
-  {
-    question: '산 정상에 화산 분화구가 함몰되거나 빗물이 고여 만들어진 호수를 무엇이라고 부를까요? (예: 백두산 천지, 한라산 백록담)',
-    options: ['칼데라호 / 화구호', '피오르호', '오아시스'],
-    answer: '칼데라호 / 화구호',
-    explanation: '화산 폭발 후 분화구에 물이 고여 형성된 호수로, 독특하고 웅장한 자연 경관을 형성합니다.'
-  }
-];
+const ITEM_INFO = {};
+BONUS_CARDS.forEach(c => { if (c.keep) ITEM_INFO[c.id] = c; });
 
-const landmarkPhotos = [
-  'photo-1548919973-5cef591cdbc9', // 한국
-  'photo-1493976040374-85c8e12f0c0e', // 일본
-  'photo-1528127269322-539801943592', // 베트남
-  'photo-1506665531195-3566af2b4dfa', // 태국
-  'photo-1518684079-3c830dcef090', // 필리핀
-  'photo-1537996194471-e657df975ab4', // 인도네시아
-  'photo-1524231757912-21f4fe3a7200', // 인도
-  '', // 기후
-  'photo-1533105079780-92b9be482077', // 이탈리아
-  'photo-1533105079780-92b9be482077', // 그리스
-  'photo-1502602898657-3e91760cbb34', // 프랑스
-  'photo-1513635269975-59663e0ac1ad', // 영국
-  'photo-1467269204594-9661b134dd2b', // 독일
-  'photo-1519681393784-d120267933ba', // 노르웨이
-  'photo-1500530855697-b586d89ba3ee', // 아이슬란드
-  '', // 지형
-  'photo-1530789253388-582c481c54b0', // 스위스
-  'photo-1555993539-1732b0258235', // 이집트
-  'photo-1518638150340-f706e86654de', // 사우디
-  'photo-1516026672322-bc52d61a55d5', // 케냐
-  'photo-1483729558449-99ef09a8c325', // 콩고
-  'photo-1485738422979-f5c462d49f74', // 모로코
-  'photo-1587595431973-160d0d94add1', // 네팔
-  '', // 생태
-  'photo-1483729558449-99ef09a8c325', // 브라질
-  'photo-1526778548025-fa2f459cd5c1', // 페루
-  'photo-1518638150340-f706e86654de', // 멕시코
-  'photo-1485738422979-f5c462d49f74', // 미국
-  'photo-1503614472-8c93d56e92ce', // 캐나다
-  'photo-1523482580672-f109ba8cb9be', // 호주
-  'photo-1469521669194-babb45599def'  // 뉴질랜드
-];
-
-// 보드판 외곽 인덱스 (9x9 둘레 32칸)
+// ============================================================
+// 보드판 생성
+// ============================================================
 const route = [];
 for (let column = 0; column < 9; column += 1) route.push(column);
 for (let row = 1; row < 9; row += 1) route.push(row * 9 + 8);
@@ -592,7 +305,6 @@ for (let row = 7; row >= 1; row -= 1) route.push(row * 9);
 const tileElements = [];
 const perimeterSpaces = new Map(spaces.map((space, index) => [route[index], { ...space, spaceIndex: index }]));
 
-// 보드 타일 생성
 for (let index = 0; index < 81; index += 1) {
   const spaceInfo = perimeterSpaces.get(index);
   const tile = document.createElement('div');
@@ -604,16 +316,13 @@ for (let index = 0; index < 81; index += 1) {
     tile.className = `tile ${spaceInfo.type} ${spaceInfo.isSpecial ? 'special-tile ' + spaceInfo.type : 'photo-tile'}`;
     tile.dataset.space = spaceInfo.spaceIndex;
 
-    if (!spaceInfo.isSpecial) {
-      const photoId = landmarkPhotos[spaceInfo.spaceIndex] || 'photo-1500530855697-b586d89ba3ee';
-      tile.style.backgroundImage = `url("https://images.unsplash.com/${photoId}?auto=format&fit=crop&w=400&q=80")`;
-    }
+    if (!spaceInfo.isSpecial) tile.style.backgroundImage = `url("${photoUrl(spaceInfo)}")`;
 
     const tagHtml = spaceInfo.tag ? `<span class="tile-category-tag">${spaceInfo.tag}</span>` : '';
     const badgeHtml = spaceInfo.isSpecial ? `<span class="special-badge">${spaceInfo.symbol}</span>` : '';
-    const nameClass = spaceInfo.name.length >= 6 ? ' long-name' : spaceInfo.name.length >= 4 ? ' medium-name' : '';
-    
-    // 4개 플레이어 말 슬롯 컨테이너 (겹침 방지)
+    // 글자 수가 많을수록 작은 글씨를 써서 칸 밖으로 넘치지 않게 합니다.
+    const nameClass = spaceInfo.name.length >= 5 ? ' long-name' : spaceInfo.name.length >= 4 ? ' medium-name' : '';
+
     tile.innerHTML = `
       ${tagHtml}
       <span class="tile-name${nameClass}">${spaceInfo.name}</span>
@@ -626,8 +335,9 @@ for (let index = 0; index < 81; index += 1) {
       </div>
     `;
 
-    // 타일 클릭 시 국가 정보 카드 미리보기
+    // 말이 움직이는 중에는 정보창을 열지 않습니다 (진행 방해 방지).
     tile.addEventListener('click', () => {
+      if (isMoving) return;
       showInfoModal(spaceInfo.spaceIndex);
     });
   }
@@ -638,38 +348,212 @@ for (let index = 0; index < 81; index += 1) {
 
 const propertyState = spaces.map(() => ({ owner: null, buildings: 0 }));
 
-// 정보 모달 열기
+
+// ============================================================
+// 중앙 지구본 — 정사영(orthographic) 도법으로 대륙과 위경선을 그립니다.
+// 말이 도착한 나라가 정면으로 오도록 지구본이 천천히 돌아갑니다.
+// ============================================================
+const globeSvg = document.querySelector('#globe');
+const globeCaption = document.querySelector('#globe-caption');
+const GLOBE_R = 78;           // 지구 반지름 (viewBox 200 기준)
+const GLOBE_CX = 100, GLOBE_CY = 100;
+
+let globeLon = 120, globeLat = 15;      // 현재 보고 있는 중심 (경도, 위도)
+let globeTargetLon = 120, globeTargetLat = 15;
+let globeMarker = null;                 // { lat, lon, name }
+let globeAnim = null;
+
+const landRings = (typeof WORLD_LAND === 'string' ? WORLD_LAND : '')
+  .split(';').filter(Boolean)
+  .map(r => r.split(',').map(pt => { const [a, b] = pt.split(' '); return [Number(a), Number(b)]; }));
+
+const rad = d => d * Math.PI / 180;
+
+// 위경도를 화면 좌표로. 지구 뒤편이면 visible=false
+function project(lat, lon) {
+  const p = rad(lat), l = rad(lon - globeLon), c0 = rad(globeLat);
+  const cosC = Math.sin(c0) * Math.sin(p) + Math.cos(c0) * Math.cos(p) * Math.cos(l);
+  return {
+    x: GLOBE_CX + GLOBE_R * Math.cos(p) * Math.sin(l),
+    y: GLOBE_CY - GLOBE_R * (Math.cos(c0) * Math.sin(p) - Math.sin(c0) * Math.cos(p) * Math.cos(l)),
+    visible: cosC >= 0
+  };
+}
+
+// 앞면에 보이는 구간만 이어서 path 문자열로
+function arcPath(points, close) {
+  let d = '', pen = false;
+  points.forEach(([lat, lon]) => {
+    const q = project(lat, lon);
+    if (!q.visible) { pen = false; return; }
+    d += (pen ? 'L' : 'M') + q.x.toFixed(1) + ' ' + q.y.toFixed(1);
+    pen = true;
+  });
+  return d && close ? d + 'Z' : d;
+}
+
+function drawGlobe() {
+  if (!globeSvg) return;
+  const parts = [];
+
+  // 바다
+  parts.push(`<circle cx="${GLOBE_CX}" cy="${GLOBE_CY}" r="${GLOBE_R}" fill="url(#seaGrad)"/>`);
+
+  // 대륙
+  let land = '';
+  landRings.forEach(ring => { land += arcPath(ring.map(([lon, lat]) => [lat, lon]), true); });
+  parts.push(`<path d="${land}" fill="#7fa87f" stroke="#4d7350" stroke-width="0.5" stroke-linejoin="round"/>`);
+
+  // 위선 (30도 간격) — 적도와 회귀선은 따로 강조
+  for (let lat = -60; lat <= 60; lat += 30) {
+    if (lat === 0) continue;
+    const pts = []; for (let lon = -180; lon <= 180; lon += 4) pts.push([lat, lon]);
+    parts.push(`<path d="${arcPath(pts)}" fill="none" stroke="rgba(255,255,255,.32)" stroke-width="0.5"/>`);
+  }
+  // 경선 (30도 간격)
+  for (let lon = -180; lon < 180; lon += 30) {
+    const pts = []; for (let lat = -90; lat <= 90; lat += 4) pts.push([lat, lon]);
+    parts.push(`<path d="${arcPath(pts)}" fill="none" stroke="rgba(255,255,255,.32)" stroke-width="0.5"/>`);
+  }
+  // 북회귀선 / 남회귀선 (23.5도)
+  [23.5, -23.5].forEach(lat => {
+    const pts = []; for (let lon = -180; lon <= 180; lon += 4) pts.push([lat, lon]);
+    parts.push(`<path d="${arcPath(pts)}" fill="none" stroke="#f4c84e" stroke-width="0.8" stroke-dasharray="3 2.5" opacity=".85"/>`);
+  });
+  // 적도
+  const eq = []; for (let lon = -180; lon <= 180; lon += 4) eq.push([0, lon]);
+  parts.push(`<path d="${arcPath(eq)}" fill="none" stroke="#ef6a43" stroke-width="1.4"/>`);
+
+  // 가장자리
+  parts.push(`<circle cx="${GLOBE_CX}" cy="${GLOBE_CY}" r="${GLOBE_R}" fill="none" stroke="rgba(32,35,31,.5)" stroke-width="1.2"/>`);
+
+  // 현재 칸 표시 (반짝임)
+  if (globeMarker) {
+    const q = project(globeMarker.lat, globeMarker.lon);
+    if (q.visible) {
+      parts.push(`<circle cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" r="7" fill="none" stroke="#ef6a43" stroke-width="1.6" class="globe-ping"/>`);
+      parts.push(`<circle cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" r="3.2" fill="#ef6a43" stroke="#fffdf7" stroke-width="1.2"/>`);
+    }
+  }
+
+  globeSvg.innerHTML = `
+    <defs>
+      <radialGradient id="seaGrad" cx="35%" cy="30%">
+        <stop offset="0%" stop-color="#bcd8e8"/>
+        <stop offset="65%" stop-color="#8fbcd4"/>
+        <stop offset="100%" stop-color="#5b8ba6"/>
+      </radialGradient>
+    </defs>
+    <g class="globe-body">${parts.join('')}</g>`;
+}
+
+// 목표 지점이 정면으로 오도록 부드럽게 회전
+function spinGlobeTo(lat, lon, marker) {
+  globeTargetLat = Math.max(-60, Math.min(60, lat));
+  let delta = lon - globeLon;
+  while (delta > 180) delta -= 360;
+  while (delta < -180) delta += 360;
+  globeTargetLon = globeLon + delta;
+  globeMarker = marker || null;
+
+  if (globeAnim) cancelAnimationFrame(globeAnim);
+  const fromLon = globeLon, fromLat = globeLat, t0 = performance.now(), dur = 900;
+  const step = (t) => {
+    const k = Math.min(1, (t - t0) / dur);
+    const e = 1 - Math.pow(1 - k, 3);          // 끝에서 부드럽게 감속
+    globeLon = fromLon + (globeTargetLon - fromLon) * e;
+    globeLat = fromLat + (globeTargetLat - fromLat) * e;
+    drawGlobe();
+    if (k < 1) globeAnim = requestAnimationFrame(step); else globeAnim = null;
+  };
+  globeAnim = requestAnimationFrame(step);
+}
+
+// 지구본이 도는 데 0.9초, 학생들이 위치를 확인할 시간 0.7초.
+// 지구본에 표시할 좌표가 없는 특수칸은 기다리지 않는다.
+const GLOBE_SPIN_MS = 900, GLOBE_LOOK_MS = 700;
+function globePauseFor(space) {
+  return (space && typeof space.lat === 'number') ? GLOBE_SPIN_MS + GLOBE_LOOK_MS : 0;
+}
+
+// 현재 차례인 사람이 서 있는 칸을 지구본에 표시
+function updateGlobeForSpace(space) {
+  if (!globeSvg) return;
+  if (space && typeof space.lat === 'number') {
+    spinGlobeTo(space.lat, space.lon, { lat: space.lat, lon: space.lon });
+    if (globeCaption) {
+      const ns = space.lat >= 0 ? '북위' : '남위';
+      const ew = space.lon >= 0 ? '동경' : '서경';
+      globeCaption.innerHTML = `<b>${space.name}</b> · ${ns} ${Math.abs(space.lat).toFixed(0)}° ${ew} ${Math.abs(space.lon).toFixed(0)}°`;
+      globeCaption.classList.remove('hidden');
+    }
+  } else {
+    globeMarker = null;
+    drawGlobe();
+    if (globeCaption) globeCaption.classList.add('hidden');
+  }
+}
+
+drawGlobe();
+
+// ============================================================
+// 토스트 알림 — 돈이 오가는 일을 화면에 바로 알려 줍니다.
+// ============================================================
+function showToast(icon, text, tone = 'info') {
+  if (!toastArea) return;
+  const el = document.createElement('div');
+  el.className = `toast toast-${tone}`;
+  el.innerHTML = `<span class="toast-icon">${icon}</span><span class="toast-text">${text}</span>`;
+  toastArea.appendChild(el);
+  setTimeout(() => el.classList.add('toast-out'), 2600);
+  setTimeout(() => el.remove(), 3100);
+  while (toastArea.children.length > 4) toastArea.firstElementChild.remove();
+}
+
+// ============================================================
+// 정보 모달
+// ============================================================
 function showInfoModal(spaceIndex) {
   const space = spaces[spaceIndex];
   const state = propertyState[spaceIndex];
   const infoTitle = document.querySelector('#info-title');
   const infoTag = document.querySelector('#info-tag');
   const infoPhoto = document.querySelector('#info-photo');
+  const infoBody = document.querySelector('.info-body');
   const infoDesc = document.querySelector('#info-desc');
   const infoCost = document.querySelector('#info-cost');
   const infoOwner = document.querySelector('#info-owner');
   const infoToll = document.querySelector('#info-toll');
 
-  infoTitle.textContent = `${space.symbol} ${space.name}`;
+  // 나라 칸이면 이름 앞에 국기를 보여 줍니다.
+  const infoFlag = document.querySelector('#info-flag');
+  if (space.code) {
+    infoFlag.src = `images/flags/${space.code}.png`;
+    infoFlag.alt = `${space.name} 국기`;
+    infoFlag.classList.remove('hidden');
+  } else {
+    infoFlag.classList.add('hidden');
+  }
+
+  infoTitle.textContent = space.isSpecial ? `${space.symbol} ${space.name}` : space.name;
   infoTag.textContent = space.tag ? `[${space.tag}]` : '탐험 특수칸';
   infoDesc.textContent = space.desc || '세계의 기후와 지형을 탐험해보세요.';
 
   if (!space.isSpecial) {
-    const photoId = landmarkPhotos[spaceIndex] || 'photo-1500530855697-b586d89ba3ee';
-    infoPhoto.style.backgroundImage = `url("https://images.unsplash.com/${photoId}?auto=format&fit=crop&w=600&q=80")`;
+    infoPhoto.style.backgroundImage = `url("${photoUrl(space)}")`;
     infoPhoto.style.display = 'block';
-    infoCost.textContent = `₩${space.cost.toLocaleString()}`;
-    if (state.owner !== null) {
-      const owner = gamePlayers[state.owner];
-      infoOwner.textContent = `${owner.name} (건물 ${state.buildings}단계)`;
-      const toll = Math.round((space.cost * (state.buildings + 1)) * 0.5);
-      infoToll.textContent = `₩${toll.toLocaleString()}`;
+    infoBody.classList.remove('no-photo');
+    infoCost.textContent = won(space.cost);
+    if (state.owner !== null && gamePlayers[state.owner]) {
+      infoOwner.textContent = `${gamePlayers[state.owner].name} (건물 ${state.buildings}단계)`;
+      infoToll.textContent = won(tollOf(spaceIndex));
     } else {
       infoOwner.textContent = '구매 가능 (빈 땅)';
-      infoToll.textContent = `₩${Math.round(space.cost * 0.5).toLocaleString()} (기본)`;
+      infoToll.textContent = `${won(Math.round(space.cost * TOLL_RATES[0]))} (건물 없을 때)`;
     }
   } else {
     infoPhoto.style.display = 'none';
+    infoBody.classList.add('no-photo');
     infoCost.textContent = '특수칸';
     infoOwner.textContent = '공용 구역';
     infoToll.textContent = '없음';
@@ -678,16 +562,15 @@ function showInfoModal(spaceIndex) {
   infoModal.classList.remove('hidden');
 }
 
-closeInfoBtn.addEventListener('click', () => {
-  infoModal.classList.add('hidden');
-});
+closeInfoBtn.addEventListener('click', () => infoModal.classList.add('hidden'));
 
-// 말 엘리먼트 생성 및 배치
+// ============================================================
+// 말 배치
+// ============================================================
 function renderPlayerPiece(playerIndex, position) {
   const tile = tileElements[route[position]];
-  const slot = tile.querySelector(`.slot-${playerIndex}`);
-  if (!slot) return;
-
+  const slot = tile && tile.querySelector(`.slot-${playerIndex}`);
+  if (!slot) return null;
   let piece = slot.querySelector('.piece');
   if (!piece) {
     piece = document.createElement('span');
@@ -700,104 +583,103 @@ function renderPlayerPiece(playerIndex, position) {
 
 function removePlayerPiece(playerIndex, position) {
   const tile = tileElements[route[position]];
-  const slot = tile?.querySelector(`.slot-${playerIndex}`);
-  slot?.querySelector('.piece')?.remove();
+  const slot = tile && tile.querySelector(`.slot-${playerIndex}`);
+  if (!slot) return;
+  const piece = slot.querySelector('.piece');
+  if (piece) piece.remove();
 }
 
-// 턴 UI 업데이트 (누구 차례인지 크고 명확하게 표시)
-function updateCurrentTurnUI() {
-  if (!gamePlayers.length) return;
-  const current = gamePlayers[currentPlayerIndex];
+// ============================================================
+// 공용 선택 모달 (보너스 카드, 증축 확인, 면제권 사용 등)
+// ============================================================
+function openChoiceModal({ eyebrow, icon, title, desc, buttons = [], choices = null }) {
+  cardEyebrow.textContent = eyebrow || '';
+  cardIcon.textContent = icon || '';
+  cardTitle.textContent = title || '';
+  cardDesc.textContent = desc || '';
 
-  // 보드 정중앙 턴 안내 갱신
-  centerTurnDot.className = `center-turn-dot p-${currentPlayerIndex}`;
-  centerTurnText.innerHTML = `<strong>${current.name}</strong> 님의 차례입니다`;
-
-  // 주사위 버튼 텍스트 갱신
-  if (current.isAI) {
-    rollBtnText.textContent = `🤖 ${current.name} 생각 중...`;
-    rollButton.disabled = true;
-  } else {
-    rollBtnText.textContent = `[${current.name}] 주사위 굴리기`;
-    rollButton.disabled = isMoving || isGameFinished;
+  cardChoices.innerHTML = '';
+  cardChoices.classList.toggle('hidden', !choices);
+  if (choices) {
+    choices.forEach(ch => {
+      const btn = document.createElement('button');
+      btn.className = 'card-choice-btn';
+      btn.innerHTML = `<strong>${ch.label}</strong><span>${ch.sub || ''}</span>`;
+      btn.addEventListener('click', () => { closeChoiceModal(); ch.onClick(); });
+      cardChoices.appendChild(btn);
+    });
   }
 
-  playerCards.forEach((card, index) => {
-    card.classList.toggle('active', index === currentPlayerIndex);
+  cardActions.innerHTML = '';
+  buttons.forEach(b => {
+    const btn = document.createElement('button');
+    btn.className = b.primary ? 'start-game' : 'card-sub-btn';
+    btn.textContent = b.label;
+    btn.addEventListener('click', () => { closeChoiceModal(); b.onClick(); });
+    cardActions.appendChild(btn);
   });
 
-  // AI 플레이어 자동 턴 진행
-  if (current.isAI && !isGameFinished && !isMoving) {
-    setTimeout(() => {
-      if (currentPlayerIndex === current.index && !isGameFinished && !isMoving) {
-        triggerDiceRoll();
-      }
-    }, 750);
-  }
+  cardModal.classList.remove('hidden');
 }
 
-function addActivityLog(text) {
-  // Activity Log 패널은 크롬북 화면 최적화를 위해 제거되었습니다.
-  console.log('[LOG]', text.replace(/<[^>]+>/g, ''));
-}
+function closeChoiceModal() { cardModal.classList.add('hidden'); }
 
-// 총자산 계산 (현금 + 토지/건물 가치)
+// ============================================================
+// 플레이어 카드 갱신
+// ============================================================
 function calculateTotalAssets(playerIndex) {
   const player = gamePlayers[playerIndex];
   let propertyVal = 0;
   propertyState.forEach((st, idx) => {
-    if (st.owner === playerIndex) {
-      const baseCost = spaces[idx].cost;
-      const buildingCost = Math.round(baseCost * 0.5) * st.buildings;
-      propertyVal += (baseCost + buildingCost);
-    }
+    if (st.owner === playerIndex) propertyVal += spaces[idx].cost + buildCostOf(idx) * st.buildings;
   });
   return player.money + propertyVal;
 }
 
-// 플레이어 카드 및 소유한 땅 목록 업데이트
 function updatePlayerRow(index) {
   const player = gamePlayers[index];
   const card = playerCards[index];
   if (!card || !player) return;
 
-  card.querySelector('.money').textContent = `₩${player.money.toLocaleString()}`;
-  card.querySelector('.player-location').textContent = `위치: ${spaces[player.position].name}`;
-  const totalAssets = calculateTotalAssets(index);
-  card.querySelector('.asset-total').textContent = `₩${totalAssets.toLocaleString()}`;
+  card.classList.toggle('bankrupt', !!player.isBankrupt);
+  card.querySelector('.money').textContent = won(player.money);
+  card.querySelector('.player-location').textContent = player.isBankrupt
+    ? '파산 — 게임에서 물러났습니다'
+    : `위치: ${spaces[player.position].name}`;
+  card.querySelector('.asset-total').textContent = won(calculateTotalAssets(index));
 
-  // 소유한 땅 목록 갱신
   const ownedLands = [];
   propertyState.forEach((st, sIdx) => {
-    if (st.owner === index) {
-      ownedLands.push({
-        space: spaces[sIdx],
-        buildings: st.buildings
-      });
-    }
+    if (st.owner === index) ownedLands.push({ space: spaces[sIdx], buildings: st.buildings });
   });
 
   const landsCountEl = card.querySelector('.lands-count');
   const landsListEl = card.querySelector('.lands-list');
   if (landsCountEl) landsCountEl.textContent = String(ownedLands.length);
-
   if (landsListEl) {
-    if (ownedLands.length === 0) {
-      landsListEl.innerHTML = '<span class="no-lands">아직 소유한 땅이 없습니다.</span>';
-    } else {
-      landsListEl.innerHTML = ownedLands.map(l => {
-        const buildClass = l.buildings > 0 ? ` building-${l.buildings}` : '';
-        return `<span class="land-pill${buildClass}">${l.space.symbol} ${l.space.name}</span>`;
-      }).join('');
-    }
+    landsListEl.innerHTML = ownedLands.length === 0
+      ? '<span class="no-lands">아직 소유한 땅이 없습니다.</span>'
+      : ownedLands.map(l => `<span class="land-pill${l.buildings > 0 ? ` building-${l.buildings}` : ''}">${l.space.symbol} ${l.space.name}${l.buildings ? ` 🏠${l.buildings}` : ''}</span>`).join('');
+  }
+
+  // 보너스 카드는 가진 것이 있을 때만 보여 줍니다 (4인 플레이에서 카드가 길어지지 않도록).
+  const itemsEl = card.querySelector('.player-items');
+  const itemsSection = card.querySelector('.player-items-section');
+  if (itemsEl && itemsSection) {
+    const items = player.items || [];
+    itemsSection.classList.toggle('hidden', items.length === 0);
+    itemsEl.innerHTML = items.map(id => `<span class="item-pill">${ITEM_INFO[id].icon} ${ITEM_INFO[id].name}</span>`).join('');
   }
 }
+
+function updateAllRows() { gamePlayers.forEach((_, i) => updatePlayerRow(i)); }
 
 function updatePropertyTile(spaceIndex) {
   const state = propertyState[spaceIndex];
   const tile = tileElements[route[spaceIndex]];
   tile.classList.remove('owner-0', 'owner-1', 'owner-2', 'owner-3');
-  tile.querySelector('.owner-badge')?.remove();
+  const old = tile.querySelector('.owner-badge');
+  if (old) old.remove();
   if (state.owner === null) return;
   tile.classList.add(`owner-${state.owner}`);
   const badge = document.createElement('span');
@@ -808,163 +690,299 @@ function updatePropertyTile(spaceIndex) {
 
 function shuffleArray(arr) {
   const array = [...arr];
-  for (let i = array.length - 1; i > 0; i--) {
+  for (let i = array.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
     [array[i], array[j]] = [array[j], array[i]];
   }
   return array;
 }
 
-function createPlayers(playerConfigs) {
-  gamePlayers = playerConfigs.map((cfg, index) => {
-    renderPlayerPiece(index, 0);
-    return {
-      index,
-      name: cfg.name,
-      isAI: cfg.isAI || false,
-      money: startingMoney,
-      position: 0
-    };
-  });
+// ============================================================
+// 턴 관리
+// ============================================================
+function alivePlayers() { return gamePlayers.filter(p => !p.isBankrupt); }
 
-  playerCards.forEach((card, index) => {
-    const visible = index < gamePlayers.length;
-    card.style.display = visible ? 'flex' : 'none';
-    if (visible) {
-      const p = gamePlayers[index];
-      card.querySelector('.player-name').textContent = p.name + (p.isAI ? ' (AI)' : '');
-      const av = card.querySelector('.avatar');
-      av.className = `avatar p-${index}`;
-      av.textContent = String(index + 1);
-      updatePlayerRow(index);
-    }
-  });
-
-  if (playerCountNum) {
-    playerCountNum.textContent = `${gamePlayers.length}명 참여 중`;
+function nextAliveIndex(from) {
+  for (let step = 1; step <= gamePlayers.length; step += 1) {
+    const idx = (from + step) % gamePlayers.length;
+    if (!gamePlayers[idx].isBankrupt) return idx;
   }
-
-  if (gameMode === 'round') {
-    if (maxRoundText) maxRoundText.textContent = String(targetMaxRounds);
-    if (targetRuleDisplay) targetRuleDisplay.textContent = `목표: ${targetMaxRounds}라운드`;
-    if (roundCaptionBox) roundCaptionBox.style.display = 'inline-block';
-  } else {
-    if (targetRuleDisplay) targetRuleDisplay.textContent = `목표: ${targetTimeMinutes}분 타임어택`;
-    if (roundCaptionBox) roundCaptionBox.style.display = 'none';
-  }
-
-  updateCurrentTurnUI();
+  return -1;
 }
 
-// 최종 게임 종료 및 시상대 팝업
+function updateCurrentTurnUI() {
+  if (!gamePlayers.length) return;
+  const current = gamePlayers[currentPlayerIndex];
+  if (!current) return;
+
+  centerTurnDot.className = `center-turn-dot p-${currentPlayerIndex}`;
+  centerTurnText.innerHTML = `<strong>${current.name}</strong> 님의 차례입니다`;
+
+  if (current.isAI) {
+    rollBtnText.textContent = `🤖 ${current.name} 생각 중...`;
+    rollButton.disabled = true;
+  } else {
+    rollBtnText.textContent = `[${current.name}] 주사위 굴리기`;
+    rollButton.disabled = isMoving || isGameFinished;
+  }
+
+  playerCards.forEach((card, index) => card.classList.toggle('active', index === currentPlayerIndex));
+
+  if (current.isAI && !isGameFinished && !isMoving) {
+    setTimeout(() => {
+      if (currentPlayerIndex === current.index && !isGameFinished && !isMoving) triggerDiceRoll();
+    }, 750);
+  }
+}
+
+function addActivityLog(text) {
+  console.log('[LOG]', String(text).replace(/<[^>]+>/g, ''));
+}
+
+function closeAllPlayModals() {
+  quizModal.classList.add('hidden');
+  sellModal.classList.add('hidden');
+  cardModal.classList.add('hidden');
+  infoModal.classList.add('hidden');
+  aiQuizBanner.classList.add('hidden');
+}
+
 function checkGameOver(reason = 'round') {
   if (isGameFinished) return true;
 
-  const shouldEndByRound = (gameMode === 'round' && currentRound > targetMaxRounds);
-  const shouldEndByTime = (gameMode === 'time' && reason === 'time');
+  const alive = alivePlayers();
+  const endByLastMan = gamePlayers.length > 1 && alive.length <= 1;
+  const endByRound = gameMode === 'round' && currentRound > targetMaxRounds;
+  const endByTime = gameMode === 'time' && reason === 'time';
+  if (!endByLastMan && !endByRound && !endByTime) return false;
 
-  if (shouldEndByRound || shouldEndByTime) {
-    isGameFinished = true;
-    rollButton.disabled = true;
-    sounds.playFanfare();
+  isGameFinished = true;
+  rollButton.disabled = true;
+  if (timerInterval) clearInterval(timerInterval);
+  closeAllPlayModals();
+  sounds.playFanfare();
 
-    if (timerInterval) clearInterval(timerInterval);
-
-    gameOverTitle.textContent = shouldEndByTime ? '⏱️ 제한 시간 종료!' : '🏁 라운드 완주!';
-    gameOverDesc.textContent = shouldEndByTime 
-      ? `설정된 ${targetTimeMinutes}분의 탐험 시간이 모두 끝났습니다! 최종 자산 순위입니다.`
-      : `목표한 ${targetMaxRounds}라운드를 모두 완주했습니다! 최종 자산 순위입니다.`;
-
-    const ranking = gamePlayers.map((p, idx) => ({
-      index: idx,
-      name: p.name,
-      totalAssets: calculateTotalAssets(idx),
-      cash: p.money
-    })).sort((a, b) => b.totalAssets - a.totalAssets);
-
-    const victoryRanking = document.querySelector('#victory-ranking');
-    const medals = ['🥇 1위 (우승)', '🥈 2위', '🥉 3위', '4위'];
-
-    victoryRanking.innerHTML = ranking.map((r, rankIdx) => `
-      <div class="victory-rank-row ${rankIdx === 0 ? 'rank-1' : ''}">
-        <span class="victory-rank-badge">${medals[rankIdx]}</span>
-        <span class="victory-rank-name"><b>${r.name}</b> (현금 ₩${r.cash.toLocaleString()})</span>
-        <span class="victory-rank-val">₩${r.totalAssets.toLocaleString()}</span>
-      </div>
-    `).join('');
-
-    gameOverModal.classList.remove('hidden');
-    addActivityLog(`🏆 게임 종료! <b>${ranking[0].name}</b>님이 총자산 <b>₩${ranking[0].totalAssets.toLocaleString()}</b>으로 최종 우승을 차지했습니다!`);
-    return true;
+  if (endByLastMan) {
+    gameOverTitle.textContent = '🏁 최후의 탐험가!';
+    gameOverDesc.textContent = `${alive[0] ? alive[0].name : '아무도'} 님을 남기고 모두 파산했습니다. 최종 자산 순위입니다.`;
+  } else if (endByTime) {
+    gameOverTitle.textContent = '⏱️ 제한 시간 종료!';
+    gameOverDesc.textContent = `설정된 ${targetTimeMinutes}분의 탐험 시간이 모두 끝났습니다! 최종 자산 순위입니다.`;
+  } else {
+    gameOverTitle.textContent = '🏁 라운드 완주!';
+    gameOverDesc.textContent = `목표한 ${targetMaxRounds}라운드를 모두 완주했습니다! 최종 자산 순위입니다.`;
   }
-  return false;
+
+  // 파산자는 순위 맨 아래로 내립니다.
+  const ranking = gamePlayers.map((p, idx) => ({
+    index: idx, name: p.name, bankrupt: !!p.isBankrupt,
+    totalAssets: p.isBankrupt ? -1 : calculateTotalAssets(idx), cash: p.money
+  })).sort((a, b) => b.totalAssets - a.totalAssets);
+
+  const victoryRanking = document.querySelector('#victory-ranking');
+  const medals = ['🥇 1위 (우승)', '🥈 2위', '🥉 3위', '4위'];
+
+  victoryRanking.innerHTML = ranking.map((r, rankIdx) => `
+    <div class="victory-rank-row ${rankIdx === 0 ? 'rank-1' : ''} ${r.bankrupt ? 'rank-out' : ''}">
+      <span class="victory-rank-badge">${r.bankrupt ? '💸 파산' : medals[rankIdx]}</span>
+      <span class="victory-rank-name"><b>${r.name}</b> (현금 ${won(r.cash)})</span>
+      <span class="victory-rank-val">${r.bankrupt ? '탈락' : won(r.totalAssets)}</span>
+    </div>
+  `).join('');
+
+  gameOverModal.classList.remove('hidden');
+  addActivityLog(`🏆 게임 종료! ${ranking[0].name} 우승`);
+  return true;
 }
 
-// 턴 종료
 function endTurn() {
   if (isGameFinished) return;
 
-  currentPlayerIndex = (currentPlayerIndex + 1) % gamePlayers.length;
-  if (currentPlayerIndex === 0) {
-    currentRound += 1;
-    roundNumber.textContent = String(currentRound).padStart(2, '0');
-  }
-
-  gamePlayers.forEach((_, idx) => updatePlayerRow(idx));
-
-  if (!checkGameOver('round')) {
+  // '한 번 더 굴리기' 카드를 뽑았다면 같은 사람이 한 번 더 굴립니다.
+  if (extraRollPending) {
+    extraRollPending = false;
+    updateAllRows();
+    showToast('🎲', '<b>한 번 더</b> 굴릴 수 있습니다!', 'good');
     updateCurrentTurnUI();
+    return;
   }
+
+  const next = nextAliveIndex(currentPlayerIndex);
+  if (next === -1) { checkGameOver('last'); return; }
+  if (next <= currentPlayerIndex) {
+    currentRound += 1;
+    roundNumber.textContent = String(Math.min(currentRound, targetMaxRounds)).padStart(2, '0');
+  }
+  currentPlayerIndex = next;
+
+  updateAllRows();
+  if (!checkGameOver('round')) updateCurrentTurnUI();
 }
 
-// 토지 매각 모달 관리 (통행세 부족 시)
-function showSellModal(playerIndex, ownerIndex, toll, spaceName) {
+// ============================================================
+// 파산 처리 — 파산한 사람은 탈락하고, 남은 사람끼리 게임을 이어 갑니다.
+// ============================================================
+function bankruptPlayer(playerIndex, creditorIndex) {
+  const player = gamePlayers[playerIndex];
+  if (player.isBankrupt) return;
+
+  propertyState.forEach((st, i) => {
+    if (st.owner === playerIndex) {
+      if (creditorIndex === null || creditorIndex === undefined) { st.owner = null; st.buildings = 0; }
+      else st.owner = creditorIndex;
+      updatePropertyTile(i);
+    }
+  });
+
+  if (creditorIndex !== null && creditorIndex !== undefined && gamePlayers[creditorIndex]) {
+    gamePlayers[creditorIndex].money += player.money;
+  }
+  player.money = 0;
+  player.items = [];
+  player.isBankrupt = true;
+  removePlayerPiece(playerIndex, player.position);
+
+  sounds.playBankrupt();
+  showToast('💸', `<b>${player.name}</b> 님이 파산하여 게임에서 물러났습니다.`, 'bad');
+  addActivityLog(`${player.name} 파산`);
+  updateAllRows();
+
+  if (!checkGameOver('bankrupt')) endTurn();
+}
+
+// ============================================================
+// 통행세 (사람 / AI 같은 규칙)
+// ============================================================
+function payToll(playerIndex, ownerIndex, spaceIndex) {
+  const player = gamePlayers[playerIndex];
+  const owner = gamePlayers[ownerIndex];
+  const toll = tollOf(spaceIndex);
+  const space = spaces[spaceIndex];
+
+  const useFreePass = () => {
+    player.items.splice(player.items.indexOf('toll-free'), 1);
+    sounds.playCard();
+    showToast('🎫', `<b>${player.name}</b> 님이 면제권 사용! ${space.name} 통행세 ${won(toll)}을 내지 않았습니다.`, 'good');
+    updateAllRows();
+    setTimeout(endTurn, 600);
+  };
+
+  const doPay = () => {
+    player.money -= toll;
+    owner.money += toll;
+    sounds.playCoin();
+    showToast('💸', `<b>${player.name}</b> → <b>${owner.name}</b> · ${space.name} 통행세 <b>${won(toll)}</b>`, 'bad');
+    updateAllRows();
+    setTimeout(endTurn, 700);
+  };
+
+  const hasPass = player.items.includes('toll-free');
+
+  if (player.isAI) {
+    if (hasPass && (toll >= 40000 || player.money < toll)) { useFreePass(); return; }
+    if (player.money >= toll) { doPay(); return; }
+    handleAIShortfall(playerIndex, ownerIndex, toll);
+    return;
+  }
+
+  if (hasPass) {
+    openChoiceModal({
+      eyebrow: 'BONUS CARD · 통행세 면제권',
+      icon: '🎫',
+      title: '통행세 면제권을 사용할까요?',
+      desc: `${space.name}의 통행세는 ${won(toll)}입니다. 면제권을 쓰면 이번 통행세를 내지 않아도 됩니다. 지금 가진 현금은 ${won(player.money)}입니다.`,
+      buttons: [
+        { label: '면제권 사용하기', primary: true, onClick: useFreePass },
+        { label: `통행세 ${won(toll)} 내기`, onClick: () => (player.money >= toll ? doPay() : showSellModal(playerIndex, ownerIndex, toll)) }
+      ]
+    });
+    return;
+  }
+
+  if (player.money >= toll) doPay();
+  else showSellModal(playerIndex, ownerIndex, toll);
+}
+
+// AI가 통행세를 못 낼 때: 비싼 땅부터 팔아 마련하고, 그래도 모자라면 사람과 똑같이 파산합니다.
+function handleAIShortfall(playerIndex, ownerIndex, toll) {
   const player = gamePlayers[playerIndex];
   const owner = gamePlayers[ownerIndex];
 
-  sellRequiredToll.textContent = `₩${toll.toLocaleString()}`;
-  
+  const owned = [];
+  propertyState.forEach((st, i) => {
+    if (st.owner === playerIndex) owned.push({ i, refund: spaces[i].cost + buildCostOf(i) * st.buildings });
+  });
+  owned.sort((a, b) => b.refund - a.refund);
+
+  for (const land of owned) {
+    if (player.money >= toll) break;
+    propertyState[land.i].owner = null;
+    propertyState[land.i].buildings = 0;
+    player.money += land.refund;
+    updatePropertyTile(land.i);
+    showToast('🏷️', `🤖 <b>${player.name}</b> 님이 ${spaces[land.i].name} 땅을 ${won(land.refund)}에 급히 팔았습니다.`, 'warn');
+  }
+
+  if (player.money >= toll) {
+    player.money -= toll;
+    owner.money += toll;
+    sounds.playCoin();
+    showToast('💸', `<b>${player.name}</b> → <b>${owner.name}</b> · 통행세 <b>${won(toll)}</b>`, 'bad');
+    updateAllRows();
+    setTimeout(endTurn, 800);
+  } else {
+    setTimeout(() => bankruptPlayer(playerIndex, ownerIndex), 800);
+  }
+}
+
+// ============================================================
+// 토지 매각 모달 (사람이 통행세를 못 낼 때)
+// ============================================================
+function showSellModal(playerIndex, ownerIndex, toll) {
+  const player = gamePlayers[playerIndex];
+  const owner = gamePlayers[ownerIndex];
+
+  sellRequiredToll.textContent = won(toll);
+
   function renderSellStatus() {
-    sellCurrentMoney.textContent = `₩${player.money.toLocaleString()}`;
+    sellCurrentMoney.textContent = won(player.money);
     const deficit = toll - player.money;
+
     if (deficit <= 0) {
       sellDeficitMoney.textContent = '₩0 (마련 완료!)';
       sellDeficitMoney.className = 'val green';
       payTollBtn.disabled = false;
-      payTollBtn.textContent = `통행세 ₩${toll.toLocaleString()} 지불하고 턴 종료`;
+      payTollBtn.textContent = `통행세 ${won(toll)} 지불하고 턴 종료`;
       bankruptBtn.classList.add('hidden');
     } else {
-      sellDeficitMoney.textContent = `₩${deficit.toLocaleString()}`;
+      sellDeficitMoney.textContent = won(deficit);
       sellDeficitMoney.className = 'val red';
       payTollBtn.disabled = true;
       payTollBtn.textContent = '부족한 금액을 토지 매각으로 마련하세요';
     }
 
-    // 매각 가능한 토지 리스트 렌더링
     const ownedLands = [];
     propertyState.forEach((st, idx) => {
       if (st.owner === playerIndex) {
-        const space = spaces[idx];
-        const buildingVal = Math.round(space.cost * 0.5) * st.buildings;
-        const refundVal = space.cost + buildingVal;
-        ownedLands.push({ spaceIndex: idx, space, buildings: st.buildings, refundVal });
+        ownedLands.push({ spaceIndex: idx, space: spaces[idx], buildings: st.buildings,
+          refundVal: spaces[idx].cost + buildCostOf(idx) * st.buildings });
       }
     });
 
     if (ownedLands.length === 0) {
       if (deficit > 0) {
-        sellLandsList.innerHTML = '<p class="no-lands" style="grid-column: 1/-1; color: #ef4343;">더 이상 매각할 토지가 없습니다. 파산 처리됩니다.</p>';
+        sellLandsList.innerHTML = '<p class="no-lands" style="grid-column: 1/-1; color: #ef4343;">더 이상 매각할 토지가 없습니다. 파산을 선언해야 합니다.</p>';
         bankruptBtn.classList.remove('hidden');
       } else {
         sellLandsList.innerHTML = '<p class="no-lands" style="grid-column: 1/-1;">남은 토지가 없습니다.</p>';
       }
     } else {
-      bankruptBtn.classList.add('hidden');
+      if (deficit > 0) bankruptBtn.classList.add('hidden');
       sellLandsList.innerHTML = ownedLands.map(l => `
         <div class="sell-land-item">
           <div class="sell-land-info">
             <span class="sell-land-name">${l.space.symbol} ${l.space.name}${l.buildings ? ` (건물${l.buildings})` : ''}</span>
-            <span class="sell-land-val">매각가 ₩${l.refundVal.toLocaleString()}</span>
+            <span class="sell-land-val">매각가 ${won(l.refundVal)}</span>
           </div>
           <button class="sell-btn" data-space="${l.spaceIndex}" data-refund="${l.refundVal}">매각</button>
         </div>
@@ -978,7 +996,8 @@ function showSellModal(playerIndex, ownerIndex, toll, spaceName) {
           propertyState[sIdx].buildings = 0;
           player.money += refund;
           sounds.playCoin();
-          updatePlayerRow(playerIndex);
+          showToast('🏷️', `${spaces[sIdx].name} 땅을 <b>${won(refund)}</b>에 매각했습니다.`, 'warn');
+          updateAllRows();
           updatePropertyTile(sIdx);
           renderSellStatus();
         });
@@ -993,60 +1012,137 @@ function showSellModal(playerIndex, ownerIndex, toll, spaceName) {
     player.money -= toll;
     owner.money += toll;
     sounds.playCoin();
-    updatePlayerRow(playerIndex);
-    updatePlayerRow(ownerIndex);
+    showToast('💸', `<b>${player.name}</b> → <b>${owner.name}</b> · 통행세 <b>${won(toll)}</b>`, 'bad');
+    updateAllRows();
     sellModal.classList.add('hidden');
     endTurn();
   };
 
   bankruptBtn.onclick = () => {
-    owner.money += player.money;
-    player.money = 0;
-    updatePlayerRow(playerIndex);
-    updatePlayerRow(ownerIndex);
     sellModal.classList.add('hidden');
-    checkGameOver('bankrupt');
+    bankruptPlayer(playerIndex, ownerIndex);
   };
 }
 
-// AI 자동 토지 매각 (통행세 부족 시)
-function handleAITollPayment(playerIndex, ownerIndex, toll, spaceName) {
+// ============================================================
+// 보너스 카드 처리
+// ============================================================
+function drawBonusCard(playerIndex) {
   const player = gamePlayers[playerIndex];
-  const owner = gamePlayers[ownerIndex];
+  const card = BONUS_CARDS[Math.floor(Math.random() * BONUS_CARDS.length)];
+  sounds.playCard();
 
-  if (player.money < toll) {
-    // AI 소유 토지 중 비싼 것부터 순차 매각
-    for (let i = 0; i < propertyState.length; i++) {
-      if (player.money >= toll) break;
-      if (propertyState[i].owner === playerIndex) {
-        const space = spaces[i];
-        const buildingVal = Math.round(space.cost * 0.5) * propertyState[i].buildings;
-        const refund = space.cost + buildingVal;
-        propertyState[i].owner = null;
-        propertyState[i].buildings = 0;
-        player.money += refund;
-        updatePropertyTile(i);
-      }
-    }
+  if (player.isAI) {
+    showToast(card.icon, `🤖 <b>${player.name}</b> 님이 <b>${card.name}</b> 카드를 뽑았습니다.`, 'good');
+    setTimeout(() => applyBonusCard(playerIndex, card), 900);
+    return;
   }
 
-  const paidToll = Math.min(player.money, toll);
-  player.money -= paidToll;
-  owner.money += paidToll;
-  sounds.playCoin();
-  updatePlayerRow(playerIndex);
-  updatePlayerRow(ownerIndex);
-  setTimeout(endTurn, 800);
+  openChoiceModal({
+    eyebrow: '🌿 ECO REST · 지구촌 보너스 카드',
+    icon: card.icon,
+    title: card.name,
+    desc: card.desc,
+    buttons: [{ label: '카드 받기', primary: true, onClick: () => applyBonusCard(playerIndex, card) }]
+  });
 }
 
-// AI 퀴즈 풀이 시각적 공유 연출
+function applyBonusCard(playerIndex, card) {
+  const player = gamePlayers[playerIndex];
+
+  if (card.keep) {
+    player.items.push(card.id);
+    showToast(card.icon, `<b>${player.name}</b> 님이 <b>${card.name}</b>을(를) 얻었습니다.`, 'good');
+    updateAllRows();
+    setTimeout(endTurn, 500);
+    return;
+  }
+
+  switch (card.id) {
+    case 'go-start': {
+      removePlayerPiece(playerIndex, player.position);
+      player.position = 0;
+      renderPlayerPiece(playerIndex, 0);
+      player.money += salaryBonus;
+      sounds.playCoin();
+      showToast('🚩', `출발지로 이동! 월급 <b>${won(salaryBonus)}</b>을 받았습니다.`, 'good');
+      updateAllRows();
+      setTimeout(endTurn, 800);
+      break;
+    }
+    case 'go-anywhere': {
+      const targets = [];
+      spaces.forEach((s, i) => { if (!s.isSpecial && i !== player.position) targets.push({ s, i }); });
+      if (player.isAI) {
+        const free = targets.filter(t => propertyState[t.i].owner === null);
+        const pool = free.length ? free : targets;
+        teleportTo(playerIndex, pool[Math.floor(Math.random() * pool.length)].i);
+        break;
+      }
+      openChoiceModal({
+        eyebrow: '✈️ WORLD TRAVEL TICKET',
+        icon: '✈️',
+        title: '어느 나라로 갈까요?',
+        desc: '가고 싶은 나라를 고르면 그곳으로 바로 이동합니다. 도착한 곳에서는 평소처럼 퀴즈를 풀거나 통행세를 냅니다.',
+        choices: targets.map(t => ({
+          label: `${t.s.symbol} ${t.s.name}`,
+          sub: propertyState[t.i].owner === null
+            ? `빈 땅 · ${won(t.s.cost)}`
+            : `${gamePlayers[propertyState[t.i].owner].name}의 땅 · 통행세 ${won(tollOf(t.i))}`,
+          onClick: () => teleportTo(playerIndex, t.i)
+        }))
+      });
+      break;
+    }
+    case 'scholarship': {
+      player.money += 40000;
+      sounds.playCoin();
+      showToast('💰', `환경 장학금 <b>${won(40000)}</b>을 받았습니다.`, 'good');
+      updateAllRows();
+      setTimeout(endTurn, 700);
+      break;
+    }
+    case 'one-more': {
+      extraRollPending = true;
+      setTimeout(endTurn, 500);
+      break;
+    }
+    case 'forest': {
+      const count = propertyState.filter(st => st.owner === playerIndex).length;
+      const reward = count * 12000;
+      player.money += reward;
+      if (reward > 0) sounds.playCoin();
+      showToast('🌳', `가진 땅 ${count}곳 × ${won(12000)} = <b>${won(reward)}</b> 환경 지원금!`, reward > 0 ? 'good' : 'info');
+      updateAllRows();
+      setTimeout(endTurn, 800);
+      break;
+    }
+    default:
+      setTimeout(endTurn, 300);
+  }
+}
+
+function teleportTo(playerIndex, spaceIndex) {
+  const player = gamePlayers[playerIndex];
+  removePlayerPiece(playerIndex, player.position);
+  player.position = spaceIndex;
+  renderPlayerPiece(playerIndex, spaceIndex);
+  showToast('✈️', `<b>${player.name}</b> 님이 <b>${spaces[spaceIndex].name}</b>(으)로 날아갔습니다.`, 'info');
+  updateGlobeForSpace(spaces[spaceIndex]);
+  updateAllRows();
+  setTimeout(() => resolveLanding(playerIndex), 400 + globePauseFor(spaces[spaceIndex]));
+}
+
+// ============================================================
+// AI 퀴즈 풀이 연출
+// ============================================================
 function handleAIQuiz(playerIndex, spaceIndex, quiz, isSpecial, space) {
   const player = gamePlayers[playerIndex];
   activeQuizSpace = spaceIndex;
 
   aiQuizBanner.classList.remove('hidden');
   aiQuizBanner.innerHTML = `<span class="ai-pulse-dot"></span> 🤖 <b>${player.name}</b>가 퀴즈를 읽고 있습니다...`;
-  
+
   quizEyebrow.textContent = isSpecial ? 'AI SPECIAL EXPLORATION CHALLENGE' : `WORLD GEOGRAPHY · [${space.tag}]`;
   quizTitle.textContent = isSpecial ? space.name : `${space.name} 지리 탐험 퀴즈`;
   quizQuestion.textContent = quiz.question;
@@ -1057,41 +1153,45 @@ function handleAIQuiz(playerIndex, spaceIndex, quiz, isSpecial, space) {
 
   quizOptions.innerHTML = '';
   const shuffled = shuffleArray(quiz.options);
-
   const optionButtons = shuffled.map(option => {
     const btn = document.createElement('button');
     btn.textContent = option;
-    btn.disabled = true; // 사람은 클릭 불가
+    btn.disabled = true;
     quizOptions.appendChild(btn);
     return { btn, option };
   });
 
   quizModal.classList.remove('hidden');
 
-  // 1.5초 후 AI 정답/오답 선택 연출
   setTimeout(() => {
+    if (isGameFinished) return;
     const isCorrect = Math.random() < 0.78;
-    const targetOption = isCorrect 
-      ? quiz.answer 
-      : shuffled.find(opt => opt !== quiz.answer) || quiz.answer;
-
+    const targetOption = isCorrect ? quiz.answer : (shuffled.find(o => o !== quiz.answer) || quiz.answer);
     const matched = optionButtons.find(o => o.option === targetOption);
+
     if (matched) {
       if (isCorrect) {
         matched.btn.classList.add('correct');
         sounds.playCorrect();
         quizResult.textContent = `🤖 ${player.name} 정답 선택!`;
         if (isSpecial) {
-          player.money += 30000;
+          player.money += specialQuizReward;
           sounds.playCoin();
-          updatePlayerRow(playerIndex);
-        } else if (player.money >= space.cost) {
-          player.money -= space.cost;
-          propertyState[spaceIndex].owner = playerIndex;
-          sounds.playCoin();
-          updatePlayerRow(playerIndex);
-          updatePropertyTile(spaceIndex);
-          quizResult.textContent = `🤖 ${player.name} 정답! 토지(₩${space.cost.toLocaleString()}) 매입 완료`;
+          showToast('🎓', `🤖 <b>${player.name}</b> 정답! 장학금 <b>${won(specialQuizReward)}</b>`, 'good');
+          updateAllRows();
+        } else {
+          const useHalf = player.items.includes('half-price');
+          const price = useHalf ? Math.round(space.cost * 0.5) : space.cost;
+          if (player.money >= price) {
+            if (useHalf) player.items.splice(player.items.indexOf('half-price'), 1);
+            player.money -= price;
+            propertyState[spaceIndex].owner = playerIndex;
+            sounds.playCoin();
+            updateAllRows();
+            updatePropertyTile(spaceIndex);
+            quizResult.textContent = `🤖 ${player.name} 정답! 토지(${won(price)}) 매입 완료`;
+            showToast('🏳️', `🤖 <b>${player.name}</b> 님이 ${space.name} 땅을 <b>${won(price)}</b>에 샀습니다.`, 'good');
+          }
         }
       } else {
         matched.btn.classList.add('incorrect');
@@ -1103,8 +1203,8 @@ function handleAIQuiz(playerIndex, spaceIndex, quiz, isSpecial, space) {
     quizExplanation.textContent = `💡 교과서 해설: ${quiz.explanation}`;
     quizExplanation.classList.remove('hidden');
 
-    // 2초 후 퀴즈 모달 닫고 다음 턴 진행
     setTimeout(() => {
+      if (isGameFinished) return;
       quizModal.classList.add('hidden');
       aiQuizBanner.classList.add('hidden');
       endTurn();
@@ -1112,7 +1212,9 @@ function handleAIQuiz(playerIndex, spaceIndex, quiz, isSpecial, space) {
   }, 1600);
 }
 
+// ============================================================
 // 착륙 처리
+// ============================================================
 function resolveLanding(playerIndex) {
   if (isGameFinished) return;
   const player = gamePlayers[playerIndex];
@@ -1122,64 +1224,52 @@ function resolveLanding(playerIndex) {
 
   updatePlayerRow(playerIndex);
 
-  // 1. 특수칸 착륙
+  // ── 1. 특수칸
   if (space.isSpecial) {
     activeQuizSpace = spaceIndex;
 
     if (space.type === 'special-start') {
-      player.money += salaryBonus;
+      // 월급은 이동 중에 이미 지급되었으므로 여기서는 완주 보너스만 더합니다.
+      player.money += lapBonus;
       sounds.playCoin();
-      updatePlayerRow(playerIndex);
-      endTurn();
+      showToast('🚩', `출발지에 정확히 도착! 완주 보너스 <b>${won(lapBonus)}</b>`, 'good');
+      updateAllRows();
+      setTimeout(endTurn, 700);
       return;
     }
 
-    if (space.type === 'special-eco') {
-      const reward = 25000;
-      player.money += reward;
-      sounds.playCoin();
-      updatePlayerRow(playerIndex);
-      endTurn();
-      return;
-    }
+    if (space.type === 'special-eco') { drawBonusCard(playerIndex); return; }
 
-    // 기후/지형 퀴즈 특수칸
     const isClimate = space.type === 'special-climate';
-    const pool = isClimate ? climateSpecialQuizzes : landformSpecialQuizzes;
-    const quiz = pool[Math.floor(Math.random() * pool.length)];
+    const quiz = isClimate ? climateQuiz() : landformQuiz();
 
-    if (player.isAI) {
-      handleAIQuiz(playerIndex, spaceIndex, quiz, true, space);
-      return;
-    }
+    if (player.isAI) { handleAIQuiz(playerIndex, spaceIndex, quiz, true, space); return; }
 
     aiQuizBanner.classList.add('hidden');
     quizEyebrow.textContent = isClimate ? 'CLIMATE EXPLORATION CHALLENGE' : 'LANDFORM GEOGRAPHY CHALLENGE';
     quizTitle.textContent = isClimate ? '🌍 세계 기후 탐험 퀴즈' : '⛰️ 세계 지형 탐험 퀴즈';
     quizQuestion.textContent = quiz.question;
-    quizResult.textContent = '문제를 맞히면 탐험 장학금 ₩30,000을 획득합니다!';
+    quizResult.textContent = `문제를 맞히면 탐험 장학금 ${won(specialQuizReward)}을 획득합니다!`;
     quizExplanation.classList.add('hidden');
     purchaseActions.classList.add('hidden');
     specialActions.classList.add('hidden');
 
     quizOptions.innerHTML = '';
-    const shuffled = shuffleArray(quiz.options);
-
-    shuffled.forEach((option) => {
+    shuffleArray(quiz.options).forEach((option) => {
       const btn = document.createElement('button');
       btn.textContent = option;
       btn.addEventListener('click', () => {
-        [...quizOptions.querySelectorAll('button')].forEach(b => b.disabled = true);
+        [...quizOptions.querySelectorAll('button')].forEach(b => { b.disabled = true; });
         quizExplanation.textContent = `💡 학습 쏙쏙: ${quiz.explanation}`;
         quizExplanation.classList.remove('hidden');
 
         if (option === quiz.answer) {
           btn.classList.add('correct');
           sounds.playCorrect();
-          const bonus = 30000;
-          player.money += bonus;
-          updatePlayerRow(playerIndex);
-          quizResult.textContent = `🎉 정답입니다! 탐험 장학금 ₩${bonus.toLocaleString()} 획득!`;
+          player.money += specialQuizReward;
+          updateAllRows();
+          quizResult.textContent = `🎉 정답입니다! 탐험 장학금 ${won(specialQuizReward)} 획득!`;
+          showToast('🎓', `정답! 장학금 <b>${won(specialQuizReward)}</b>을 받았습니다.`, 'good');
         } else {
           btn.classList.add('incorrect');
           sounds.playIncorrect();
@@ -1194,17 +1284,18 @@ function resolveLanding(playerIndex) {
     return;
   }
 
-  // 2. 일반 국가 타일 착륙
+  // ── 2. 빈 땅: 퀴즈를 맞히면 살 수 있습니다.
   if (state.owner === null) {
     activeQuizSpace = spaceIndex;
-    const quiz = space.quiz;
+    const quiz = countryQuiz(space.name);
+    if (!quiz) { setTimeout(endTurn, 200); return; }
 
-    if (player.isAI) {
-      handleAIQuiz(playerIndex, spaceIndex, quiz, false, space);
-      return;
-    }
+    if (player.isAI) { handleAIQuiz(playerIndex, spaceIndex, quiz, false, space); return; }
 
-    // 사람 플레이어 퀴즈 모달
+    const hasHalf = player.items.includes('half-price');
+    pendingPurchaseDiscount = hasHalf ? 0.5 : 1;
+    const price = Math.round(space.cost * pendingPurchaseDiscount);
+
     aiQuizBanner.classList.add('hidden');
     quizEyebrow.textContent = `WORLD GEOGRAPHY · [${space.tag}]`;
     quizTitle.textContent = `${space.name} 지리 탐험 퀴즈`;
@@ -1213,17 +1304,16 @@ function resolveLanding(playerIndex) {
     quizExplanation.classList.add('hidden');
     purchaseActions.classList.add('hidden');
     specialActions.classList.add('hidden');
-
-    purchaseQuestion.textContent = `${space.name} 땅을 ₩${space.cost.toLocaleString()}에 구매하시겠습니까?`;
+    purchaseQuestion.textContent = hasHalf
+      ? `🏷️ 반값 매입권 사용! ${space.name} 땅을 ${won(price)}에 구매하시겠습니까? (원래 ${won(space.cost)})`
+      : `${space.name} 땅을 ${won(price)}에 구매하시겠습니까?`;
 
     quizOptions.innerHTML = '';
-    const shuffled = shuffleArray(quiz.options);
-
-    shuffled.forEach((option) => {
+    shuffleArray(quiz.options).forEach((option) => {
       const btn = document.createElement('button');
       btn.textContent = option;
       btn.addEventListener('click', () => {
-        [...quizOptions.querySelectorAll('button')].forEach(b => b.disabled = true);
+        [...quizOptions.querySelectorAll('button')].forEach(b => { b.disabled = true; });
         quizExplanation.textContent = `💡 교과서 탐구: ${quiz.explanation}`;
         quizExplanation.classList.remove('hidden');
 
@@ -1236,57 +1326,80 @@ function resolveLanding(playerIndex) {
           btn.classList.add('incorrect');
           sounds.playIncorrect();
           quizResult.textContent = '아쉽게도 틀렸습니다. 이번 턴에는 구매할 수 없습니다.';
-          setTimeout(() => {
-            quizModal.classList.add('hidden');
-            endTurn();
-          }, 1800);
+          setTimeout(() => { quizModal.classList.add('hidden'); endTurn(); }, 1800);
         }
       });
       quizOptions.appendChild(btn);
     });
 
     quizModal.classList.remove('hidden');
-  } else if (state.owner === playerIndex) {
-    // 본인 땅: 건물 증축
-    const buildingCost = Math.round(space.cost * 0.5);
-    if (state.buildings < 3 && player.money >= buildingCost) {
-      state.buildings += 1;
-      player.money -= buildingCost;
-      sounds.playCoin();
-      updatePlayerRow(playerIndex);
-      updatePropertyTile(spaceIndex);
-    }
-    setTimeout(endTurn, player.isAI ? 800 : 0);
-  } else {
-    // 타인 땅: 통행세 지불 처리 (토지 매각 지원)
-    const owner = gamePlayers[state.owner];
-    const toll = Math.round((space.cost * (state.buildings + 1)) * 0.5);
-
-    if (player.isAI) {
-      handleAITollPayment(playerIndex, state.owner, toll, space.name);
-    } else {
-      if (player.money >= toll) {
-        player.money -= toll;
-        owner.money += toll;
-        sounds.playCoin();
-        updatePlayerRow(playerIndex);
-        updatePlayerRow(state.owner);
-        setTimeout(endTurn, 600);
-      } else {
-        // 현금 부족 -> 토지 매각 모달 열기!
-        showSellModal(playerIndex, state.owner, toll, space.name);
-      }
-    }
+    return;
   }
+
+  // ── 3. 내 땅: 건물을 지을지 선택합니다.
+  if (state.owner === playerIndex) { offerBuild(playerIndex, spaceIndex); return; }
+
+  // ── 4. 남의 땅: 통행세
+  payToll(playerIndex, state.owner, spaceIndex);
 }
 
-// 말 1칸씩 순차적 점프 이동 애니메이션
+function offerBuild(playerIndex, spaceIndex) {
+  const player = gamePlayers[playerIndex];
+  const state = propertyState[spaceIndex];
+  const space = spaces[spaceIndex];
+  const cost = buildCostOf(spaceIndex);
+  const hasFree = player.items.includes('free-build');
+
+  const build = (free) => {
+    state.buildings += 1;
+    if (free) player.items.splice(player.items.indexOf('free-build'), 1);
+    else player.money -= cost;
+    sounds.playCoin();
+    showToast('🏠', free
+      ? `무료 증축권으로 ${space.name}에 건물을 지었습니다! 건물 ${state.buildings}단계 · 통행세 ${won(tollOf(spaceIndex))}`
+      : `${space.name}에 건물을 지었습니다. <b>-${won(cost)}</b> · 건물 ${state.buildings}단계 · 통행세 ${won(tollOf(spaceIndex))}`, 'good');
+    updateAllRows();
+    updatePropertyTile(spaceIndex);
+    setTimeout(endTurn, 700);
+  };
+
+  if (state.buildings >= 3) {
+    showToast('🏠', `${space.name}은(는) 이미 건물 3단계(최대)입니다. 통행세 ${won(tollOf(spaceIndex))}`, 'info');
+    setTimeout(endTurn, 600);
+    return;
+  }
+
+  if (player.isAI) {
+    if (hasFree) build(true);
+    else if (player.money - cost >= 60000) build(false);
+    else { showToast('🏳️', `🤖 <b>${player.name}</b> 님이 ${space.name}에서 쉬어 갑니다.`, 'info'); setTimeout(endTurn, 700); }
+    return;
+  }
+
+  const nextToll = Math.round(space.cost * TOLL_RATES[Math.min(state.buildings + 1, 3)]);
+  const buttons = [];
+  if (hasFree) buttons.push({ label: '🏗️ 무료 증축권으로 짓기', primary: true, onClick: () => build(true) });
+  if (player.money >= cost) buttons.push({ label: `${won(cost)} 내고 짓기`, primary: !hasFree, onClick: () => build(false) });
+  buttons.push({ label: '짓지 않기', onClick: () => setTimeout(endTurn, 100) });
+
+  openChoiceModal({
+    eyebrow: `MY LAND · ${space.name}`,
+    icon: '🏠',
+    title: '건물을 지을까요?',
+    desc: `건물을 지으면 통행세가 ${won(tollOf(spaceIndex))} → ${won(nextToll)}(으)로 오릅니다. 건물 값은 ${won(cost)}이고 지금은 ${state.buildings}단계입니다. 보유 현금은 ${won(player.money)}입니다.`,
+    buttons
+  });
+}
+
+// ============================================================
+// 이동 애니메이션
+// ============================================================
 async function movePlayerStepByStep(playerIndex, steps) {
   isMoving = true;
   rollButton.disabled = true;
   const player = gamePlayers[playerIndex];
 
-  for (let s = 1; s <= steps; s++) {
+  for (let s = 1; s <= steps; s += 1) {
     const prevPos = player.position;
     const nextPos = (prevPos + 1) % spaces.length;
 
@@ -1294,106 +1407,167 @@ async function movePlayerStepByStep(playerIndex, steps) {
     player.position = nextPos;
     const piece = renderPlayerPiece(playerIndex, nextPos);
 
-    piece.classList.add('stepping');
+    if (piece) piece.classList.add('stepping');
     sounds.playStep();
 
-    // 0번(출발지) 통과 시 월급 보너스 즉시 지급
+    // 출발지를 지나거나 도착하면 월급을 1회 지급합니다 (도착 보너스는 착륙 처리에서 따로 줍니다).
     if (nextPos === 0) {
       player.money += salaryBonus;
       sounds.playCoin();
       updatePlayerRow(playerIndex);
-      addActivityLog(`<b>${player.name}</b>님이 출발지를 통과하여 월급 <b>₩${salaryBonus.toLocaleString()}</b>을 받았습니다.`);
+      showToast('💵', `<b>${player.name}</b> 님이 출발지를 지나 월급 <b>${won(salaryBonus)}</b>을 받았습니다.`, 'good');
     }
 
     await new Promise(resolve => setTimeout(resolve, 240));
-    piece.classList.remove('stepping');
+    if (piece) piece.classList.remove('stepping');
   }
+
+  // 이동이 끝나면 지구본으로 위치를 먼저 보여 주고, 잠시 뒤 퀴즈를 연다
+  const landed = spaces[player.position];
+  updateGlobeForSpace(landed);
+  await new Promise(resolve => setTimeout(resolve, globePauseFor(landed)));
 
   isMoving = false;
   resolveLanding(playerIndex);
 }
 
-// 주사위 굴리기 실행 함수
+// ============================================================
+// 주사위 — 위에서 내려다보는 입체 주사위.
+// 각 눈이 윗면으로 오는 회전각을 정해 두고, 여러 바퀴 돈 뒤 그 각도에 정확히 착지시킵니다.
+// 면 배치: 1-6, 2-5, 3-4 가 서로 마주 봅니다(합이 7).
+// ============================================================
+// 주사위 각 면에 눈(점)을 그린다. 숫자 대신 점을 써서 진짜 주사위처럼 보이게 한다.
+const PIP_LAYOUT = {
+  1: [4],
+  2: [0, 8],
+  3: [0, 4, 8],
+  4: [0, 2, 6, 8],
+  5: [0, 2, 4, 6, 8],
+  6: [0, 2, 3, 5, 6, 8]
+};
+
+(function drawDiePips() {
+  for (let v = 1; v <= 6; v += 1) {
+    const face = dieOne.querySelector('.f' + v);
+    if (!face) continue;
+    if (v === 1) face.classList.add('pip-red');   // 1은 빨간 눈 (전통 주사위)
+    let html = '';
+    for (let i = 0; i < 9; i += 1) {
+      html += PIP_LAYOUT[v].includes(i) ? '<span class="die-pip"><i></i></span>' : '<span class="die-pip"></span>';
+    }
+    face.innerHTML = html;
+  }
+})();
+
+// 면 배치(CSS): f1=앞, f6=뒤, f2=위, f5=아래, f3=오른쪽, f4=왼쪽
+// 어떤 눈을 윗면으로 올리려면 주사위를 아래 각도만큼 돌리면 된다.
+const DIE_LANDING = {
+  1: { x: 90, y: 0 },     // 앞면을 위로
+  2: { x: 0, y: 0 },      // 이미 위
+  3: { x: 90, y: -90 },   // 오른쪽 면을 위로
+  4: { x: 90, y: 90 },    // 왼쪽 면을 위로
+  5: { x: 180, y: 0 },    // 아랫면을 위로
+  6: { x: 90, y: 180 }    // 뒷면을 위로
+};
+
+// 카메라를 위쪽으로 올려 윗면이 보이게 하는 고정 기울기
+const DIE_TILT = -58;
+let dieSpinX = 0, dieSpinY = 0;   // 지금까지 누적된 회전(도)
+
+function applyDieTransform() {
+  dieOne.style.transform = `rotateX(${DIE_TILT + dieSpinX}deg) rotateY(${dieSpinY}deg)`;
+}
+
+function setDieFace(value, spins) {
+  const land = DIE_LANDING[value];
+  const turns = spins || 0;
+  // 현재 각도보다 앞쪽에 있는, 착지각과 360도 배수만큼 떨어진 지점으로 보낸다
+  dieSpinX = land.x + 360 * (Math.floor((dieSpinX - land.x) / 360) + turns + 1);
+  dieSpinY = land.y + 360 * (Math.floor((dieSpinY - land.y) / 360) + turns + 1);
+  applyDieTransform();
+}
+
+// 어떤 눈이 윗면에 있는지 되돌려 준다 (검증용)
+function currentDieTopFace() {
+  const nx = ((dieSpinX % 360) + 360) % 360;
+  const ny = ((dieSpinY % 360) + 360) % 360;
+  for (const v of [1, 2, 3, 4, 5, 6]) {
+    const L = DIE_LANDING[v];
+    if (((L.x % 360) + 360) % 360 === nx && ((L.y % 360) + 360) % 360 === ny) return v;
+  }
+  return null;
+}
+
+setDieFace(1, 0);
+
 function triggerDiceRoll() {
   if (!gamePlayers.length || isGameFinished || isMoving) return;
   rollButton.disabled = true;
-  dieOne.classList.add('is-rolling');
   sounds.playRoll();
 
-  let ticks = 0;
-  const animation = setInterval(() => {
-    const rolledValue = Math.ceil(Math.random() * 6);
-    dieOneFace.textContent = rolledValue;
-    ticks += 1;
+  const finalRoll = Math.ceil(Math.random() * 6);
+  dieOne.classList.add('is-tumbling');
+  setDieFace(finalRoll, 2 + Math.floor(Math.random() * 2));
 
-    if (ticks >= 7) {
-      clearInterval(animation);
-      dieOne.classList.remove('is-rolling');
-
-      const finalRoll = Number(dieOneFace.textContent);
-      rollSum.textContent = finalRoll;
-
-      const player = gamePlayers[currentPlayerIndex];
-      addActivityLog(`🎲 <b>${player.name}</b> 주사위 <b>${finalRoll}</b> 나옴`);
-
-      setTimeout(() => {
-        movePlayerStepByStep(currentPlayerIndex, finalRoll);
-      }, 350);
-    }
-  }, 65);
+  setTimeout(() => {
+    dieOne.classList.remove('is-tumbling');
+    dieOne.classList.add('is-landing');
+    rollSum.textContent = finalRoll;
+    addActivityLog(`🎲 ${gamePlayers[currentPlayerIndex].name} 주사위 ${finalRoll}`);
+    setTimeout(() => dieOne.classList.remove('is-landing'), 320);
+    setTimeout(() => movePlayerStepByStep(currentPlayerIndex, finalRoll), 380);
+  }, 1000);
 }
 
 rollButton.addEventListener('click', triggerDiceRoll);
 
-// 땅 구매
+// ============================================================
+// 구매 / 건너뛰기 / 확인 버튼
+// ============================================================
 buyProperty.addEventListener('click', () => {
   const player = gamePlayers[currentPlayerIndex];
   const state = propertyState[activeQuizSpace];
   const space = spaces[activeQuizSpace];
+  const price = Math.round(space.cost * pendingPurchaseDiscount);
 
-  if (player.money >= space.cost) {
-    player.money -= space.cost;
+  if (player.money >= price) {
+    if (pendingPurchaseDiscount < 1) player.items.splice(player.items.indexOf('half-price'), 1);
+    player.money -= price;
     state.owner = currentPlayerIndex;
     sounds.playCoin();
-    updatePlayerRow(currentPlayerIndex);
+    updateAllRows();
     updatePropertyTile(activeQuizSpace);
-    quizResult.textContent = `구매 완료! ₩${space.cost.toLocaleString()}을 지불했습니다.`;
-    addActivityLog(`<b>${player.name}</b>님이 <b>${space.name}</b> 토지를 ₩${space.cost.toLocaleString()}에 매입했습니다.`);
+    quizResult.textContent = `구매 완료! ${won(price)}을 지불했습니다.`;
+    showToast('🏳️', `<b>${player.name}</b> 님이 ${space.name} 땅을 <b>${won(price)}</b>에 샀습니다.`, 'good');
   } else {
     sounds.playIncorrect();
     quizResult.textContent = '잔액이 부족하여 토지를 구매할 수 없습니다.';
+    showToast('⚠️', '현금이 부족해 땅을 살 수 없습니다.', 'warn');
   }
 
+  pendingPurchaseDiscount = 1;
   purchaseActions.classList.add('hidden');
-  setTimeout(() => {
-    quizModal.classList.add('hidden');
-    endTurn();
-  }, 1000);
+  setTimeout(() => { quizModal.classList.add('hidden'); endTurn(); }, 1000);
 });
 
-// 땅 구매 건너뛰기
 skipProperty.addEventListener('click', () => {
+  pendingPurchaseDiscount = 1;
   quizResult.textContent = '토지를 구매하지 않았습니다.';
   purchaseActions.classList.add('hidden');
-  setTimeout(() => {
-    quizModal.classList.add('hidden');
-    endTurn();
-  }, 600);
+  setTimeout(() => { quizModal.classList.add('hidden'); endTurn(); }, 600);
 });
 
-// 특수칸 모달 확인
 claimSpecial.addEventListener('click', () => {
   specialActions.classList.add('hidden');
   quizModal.classList.add('hidden');
   endTurn();
 });
 
-// 다시하기 버튼
-restartGameBtn.addEventListener('click', () => {
-  location.reload();
-});
+restartGameBtn.addEventListener('click', () => location.reload());
 
-// 플레이어 이름 필드 생성 (1인용일 경우 AI 컴퓨터 안내)
+// ============================================================
+// 설정 화면
+// ============================================================
 function renderNameFields() {
   nameFields.innerHTML = '';
   if (selectedPlayerCount === 1) {
@@ -1406,9 +1580,7 @@ function renderNameFields() {
     nameFields.appendChild(input);
 
     const aiNotice = document.createElement('div');
-    aiNotice.style.fontSize = '12px';
-    aiNotice.style.color = '#777';
-    aiNotice.style.marginTop = '6px';
+    aiNotice.className = 'ai-notice';
     aiNotice.textContent = '🤖 상대: 지구봇 AI (자동 대전)';
     nameFields.appendChild(aiNotice);
   } else {
@@ -1424,7 +1596,39 @@ function renderNameFields() {
   }
 }
 
-// 인원 선택 버튼
+function createPlayers(playerConfigs) {
+  gamePlayers = playerConfigs.map((cfg, index) => {
+    renderPlayerPiece(index, 0);
+    return { index, name: cfg.name, isAI: cfg.isAI || false, money: startingMoney, position: 0, items: [], isBankrupt: false };
+  });
+
+  playerCards.forEach((card, index) => {
+    const visible = index < gamePlayers.length;
+    card.style.display = visible ? 'flex' : 'none';
+    if (visible) {
+      const p = gamePlayers[index];
+      card.querySelector('.player-name').textContent = p.name + (p.isAI ? ' (AI)' : '');
+      const av = card.querySelector('.avatar');
+      av.className = `avatar p-${index}`;
+      av.textContent = String(index + 1);
+      updatePlayerRow(index);
+    }
+  });
+
+  if (playerCountNum) playerCountNum.textContent = `${gamePlayers.length}명 참여 중`;
+
+  if (gameMode === 'round') {
+    if (maxRoundText) maxRoundText.textContent = String(targetMaxRounds);
+    if (targetRuleDisplay) targetRuleDisplay.textContent = `목표: ${targetMaxRounds}라운드`;
+    if (roundCaptionBox) roundCaptionBox.style.display = 'inline-block';
+  } else {
+    if (targetRuleDisplay) targetRuleDisplay.textContent = `목표: ${targetTimeMinutes}분 타임어택`;
+    if (roundCaptionBox) roundCaptionBox.style.display = 'none';
+  }
+
+  updateCurrentTurnUI();
+}
+
 document.querySelectorAll('.player-count-select .setup-count').forEach((button) => {
   button.addEventListener('click', () => {
     selectedPlayerCount = Number(button.dataset.count);
@@ -1433,7 +1637,6 @@ document.querySelectorAll('.player-count-select .setup-count').forEach((button) 
   });
 });
 
-// 라운드제 vs 시간제 모드 전환
 modeRoundBtn.addEventListener('click', () => {
   gameMode = 'round';
   modeRoundBtn.classList.add('active');
@@ -1450,7 +1653,6 @@ modeTimeBtn.addEventListener('click', () => {
   roundOptionsGroup.classList.add('hidden');
 });
 
-// 라운드 수 선택
 document.querySelectorAll('.round-count-select .setup-round').forEach((button) => {
   button.addEventListener('click', () => {
     targetMaxRounds = Number(button.dataset.rounds);
@@ -1458,7 +1660,6 @@ document.querySelectorAll('.round-count-select .setup-round').forEach((button) =
   });
 });
 
-// 시간 선택
 document.querySelectorAll('.time-count-select .setup-round').forEach((button) => {
   button.addEventListener('click', () => {
     targetTimeMinutes = Number(button.dataset.minutes);
@@ -1467,43 +1668,31 @@ document.querySelectorAll('.time-count-select .setup-round').forEach((button) =>
   });
 });
 
-// 게임 시작 버튼
 document.querySelector('#start-game').addEventListener('click', () => {
   sounds.init();
   let playerConfigs = [];
   if (selectedPlayerCount === 1) {
     const myName = nameFields.querySelector('input').value.trim() || '탐험가';
-    playerConfigs = [
-      { name: myName, isAI: false },
-      { name: '지구봇 AI', isAI: true }
-    ];
+    playerConfigs = [{ name: myName, isAI: false }, { name: '지구봇 AI', isAI: true }];
   } else {
-    const inputs = [...nameFields.querySelectorAll('input')];
-    playerConfigs = inputs.map((input, index) => ({
-      name: input.value.trim() || `플레이어 ${index + 1}`,
-      isAI: false
+    playerConfigs = [...nameFields.querySelectorAll('input')].map((input, index) => ({
+      name: input.value.trim() || `플레이어 ${index + 1}`, isAI: false
     }));
   }
 
-  if (gameMode === 'time') {
-    remainingSeconds = targetTimeMinutes * 60;
-  }
+  if (gameMode === 'time') remainingSeconds = targetTimeMinutes * 60;
 
   createPlayers(playerConfigs);
   setupModal.classList.add('hidden');
 
-  // 타이머 루프 시작
   if (timerInterval) clearInterval(timerInterval);
   timerInterval = setInterval(() => {
     if (isGameFinished) return;
 
     if (gameMode === 'round') {
       elapsedSeconds += 1;
-      const m = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
-      const s = String(elapsedSeconds % 60).padStart(2, '0');
-      timer.textContent = `${m}:${s}`;
+      timer.textContent = `${String(Math.floor(elapsedSeconds / 60)).padStart(2, '0')}:${String(elapsedSeconds % 60).padStart(2, '0')}`;
     } else {
-      // 시간 제한제 카운트다운
       remainingSeconds -= 1;
       if (remainingSeconds <= 0) {
         remainingSeconds = 0;
@@ -1512,16 +1701,10 @@ document.querySelector('#start-game').addEventListener('click', () => {
         checkGameOver('time');
         return;
       }
-      const m = String(Math.floor(remainingSeconds / 60)).padStart(2, '0');
-      const s = String(remainingSeconds % 60).padStart(2, '0');
-      timer.textContent = `${m}:${s}`;
-
-      if (remainingSeconds <= 30) {
-        timer.classList.add('time-warning');
-      }
+      timer.textContent = `${String(Math.floor(remainingSeconds / 60)).padStart(2, '0')}:${String(remainingSeconds % 60).padStart(2, '0')}`;
+      if (remainingSeconds <= 30) timer.classList.add('time-warning');
     }
   }, 1000);
 });
 
 renderNameFields();
-
