@@ -2,7 +2,7 @@
   --ink: #20231f;
   --paper: #f5f1e9;
   --line: #c9c3b7;
-  --orange: #ef6a43;
+  --orange: #b23c0a;
   --yellow: #f4c84e;
   --blue: #82a8b9;
   --mint: #a8c9b5;
@@ -35,7 +35,7 @@ button { font: inherit; }
    초대형 퀴즈 모달 (크롬북 최적화 대형 폰트)
    ============================================================ */
 .quiz-card {
-  width: min(920px, 96vw) !important;
+  width: min(1240px, 94vw) !important;
   max-height: 94vh !important;
   padding: 34px 38px !important;
   box-shadow: 14px 14px 0 var(--ink) !important;
@@ -108,11 +108,20 @@ button { font: inherit; }
   transform: translateX(5px);
 }
 
+/* 초록·빨강의 밝기가 거의 같아 색만으로는 구분되지 않습니다 */
+.quiz-options button.correct::before { content: "✓ "; font-weight: 900; }
+.quiz-options button.incorrect::before { content: "✕ "; font-weight: 900; }
+
 .quiz-options button.correct {
   background: #2e7d5e !important;
   color: white !important;
   border-color: #174b37 !important;
   font-weight: 900 !important;
+}
+
+.quiz-options button:disabled {
+  opacity: 1;
+  color: #4a4a44;
 }
 
 .quiz-options button.incorrect {
@@ -137,7 +146,7 @@ button { font: inherit; }
   border: 2px dashed var(--ink);
   border-radius: 8px;
   background: #fffcf0;
-  font-size: .92em;
+  font-size: clamp(15px, 1.5vw, 19px);
   line-height: 1.5;
 }
 
@@ -158,7 +167,7 @@ button { font: inherit; }
 .quiz-amount.good { color: #15803d; }
 .quiz-amount.bad  { color: #dc2626; }
 
-.quiz-explanation {
+.setup-card p.quiz-explanation {
   margin-top: 16px;
   padding: 18px 20px;
   border: 2.5px dashed var(--ink);
@@ -286,7 +295,8 @@ button { font: inherit; }
 }
 
 .sell-btn {
-  padding: 8px 14px;
+  min-height: 44px;
+  padding: 10px 14px;
   background: #ef4343;
   color: white;
   border: 1.5px solid var(--ink);
@@ -295,6 +305,12 @@ button { font: inherit; }
   font-weight: 800;
   cursor: pointer;
   transition: transform .1s;
+}
+
+.sell-btn.confirming {
+  background: var(--ink);
+  color: var(--yellow);
+  animation: pulse-border .7s infinite alternate;
 }
 
 .sell-btn:hover {
@@ -371,6 +387,14 @@ button { font: inherit; }
   border: 2.5px solid var(--ink);
   box-shadow: 4px 4px 0 var(--ink);
   border-radius: 6px;
+}
+
+/* 매각·게임 종료 안내문도 .setup-card p 의 14px를 물려받고 있었습니다 */
+.setup-card p.sell-desc,
+.setup-card p#game-over-desc {
+  font-size: clamp(15px, 1.5vw, 19px);
+  color: #3a382f;
+  line-height: 1.55;
 }
 
 .setup-card p.info-desc {
@@ -881,7 +905,7 @@ button { font: inherit; }
   flex-direction: column;
   align-items: center;   /* 오른쪽 여백의 가운데로 카드들을 모은다 */
   gap: 6px;              /* 4인 플레이에서도 카드 4장이 화면에 다 들어오도록 */
-  height: 97vh;
+  height: auto;
   max-height: 97vh;
   overflow-y: auto;
   padding: 0 4px;
@@ -958,6 +982,11 @@ button { font: inherit; }
 }
 .sound-toggle-btn:hover { background: var(--yellow); }
 
+/* 종이 칠 때 교사가 판을 정리할 수 있는 버튼 (모든 모드에서 동작) */
+.control-card-btns { display: flex; gap: 6px; align-items: center; }
+.finish-now-btn { color: var(--orange); }
+.finish-now-btn:hover { background: var(--orange); color: var(--white); }
+
 .control-card-status {
   display: flex;
   gap: 6px;
@@ -989,7 +1018,7 @@ button { font: inherit; }
 
 .status-pill strong {
   color: var(--orange);
-  font-size: 12px;
+  font-size: 16px;
 }
 
 .status-pill strong.time-warning {
@@ -1193,9 +1222,9 @@ button { font: inherit; }
   /* 사이드바가 오른쪽 여백 가운데로 오면서 겹치므로 왼쪽 아래로 옮겼습니다 */
   position: fixed;
   left: 16px;
-  bottom: 10px;
+  bottom: 2px;
   z-index: 100;
-  font-size: 12px;
+  font-size: 10.5px;
   font-family: "Space Grotesk", sans-serif;
   color: #848076;
   font-weight: 700;
@@ -1267,7 +1296,7 @@ button { font: inherit; }
   100% { transform: scale(1) rotate(0); opacity: 1; }
 }
 
-.bonus-card-desc {
+.setup-card p.bonus-card-desc {
   margin: 0 auto 14px;
   max-width: 460px;
   color: #4a4a44;
@@ -1373,7 +1402,7 @@ button { font: inherit; }
 .toast-area {
   /* 보드판 한가운데 빈 공간에 띄워 칸 이름을 가리지 않게 한다 */
   position: absolute;
-  bottom: 4%;
+  bottom: 26%;   /* 주사위 버튼 위, 보드 가운데 빈 공간에서 쌓이도록 */
   left: 50%;
   width: 132%;
   z-index: 20;
@@ -1433,6 +1462,15 @@ button { font: inherit; }
   .lands-header { margin-bottom: 2px; font-size: 10.5px; }
   .player-lands-section, .player-items-section { padding-top: 4px; }
   .sidebar-header { margin-bottom: 2px; }
+}
+
+@media (max-height: 760px) {
+  .sidebar { gap: 2px; }
+  .player-card { gap: 2px; padding: 4px 9px; }
+  .sidebar-header { margin-bottom: 0; }
+  .player-lands-section, .player-items-section { padding-top: 2px; }
+  .land-pill { padding: 1px 5px; font-size: 9.5px; }
+  .wealth-val { font-size: 15px; }
 }
 
 /* ============================================================
@@ -1496,6 +1534,16 @@ button { font: inherit; }
 /* 현재 칸 반짝임 */
 .globe-ping { animation: globe-ping 1.6s ease-out infinite; transform-origin: center; }
 
+@keyframes pulse-time {
+  from { opacity: 1; }
+  to { opacity: .45; }
+}
+
+@keyframes pulse-border {
+  from { box-shadow: 0 0 0 0 rgba(239, 67, 67, .55); }
+  to { box-shadow: 0 0 0 10px rgba(239, 67, 67, 0); }
+}
+
 @keyframes globe-ping {
   0% { opacity: .95; r: 4; }
   70% { opacity: 0; r: 13; }
@@ -1523,7 +1571,7 @@ button { font: inherit; }
   .quiz-options button { padding: 11px 16px; font-size: clamp(15px, 1.6vw, 19px); line-height: 1.35; }
   .quiz-card .quiz-result { margin-top: 11px !important; font-size: clamp(17px, 1.8vw, 21px); min-height: 20px; }
   .quiz-amount { padding: 1px 8px; font-size: 1.4em; }
-  .quiz-explanation { margin-top: 10px; padding: 11px 14px; font-size: clamp(14px, 1.35vw, 17px); line-height: 1.45; }
+  .setup-card p.quiz-explanation { margin-top: 10px; padding: 11px 14px; font-size: clamp(14px, 1.35vw, 17px); line-height: 1.45; }
   .purchase-actions { margin-top: 11px; }
   .purchase-actions p { font-size: 16px; margin-bottom: 7px; }
   .purchase-actions button { padding: 11px 10px; font-size: 16px; }

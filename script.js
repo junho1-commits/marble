@@ -38,6 +38,7 @@ const centerTurnText = document.querySelector('#center-turn-text');
 const soundToggleBtn = document.querySelector('#sound-toggle');
 const closeInfoBtn = document.querySelector('#close-info');
 const restartGameBtn = document.querySelector('#restart-game');
+const finishNowBtn = document.querySelector('#finish-now');
 const toastArea = document.querySelector('#toast-area');
 
 // 토지 매각 모달 요소
@@ -112,6 +113,10 @@ const SELL_REFUND_RATE = 0.6;
 const DISASTER_CHANCE = 0.25;
 
 function won(n) { return `₩${n.toLocaleString()}`; }
+// 아이가 이름에 특수문자를 넣어도 화면이 깨지지 않게 합니다.
+function safeName(name) {
+  return String(name).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
 function tollOf(spaceIndex) {
   return Math.round(spaces[spaceIndex].cost * TOLL_RATES[Math.min(propertyState[spaceIndex].buildings, 3)]);
 }
@@ -244,15 +249,15 @@ const spaces = [
     desc: '바다와 맞닿은 곳이 전혀 없는 내륙국이면서 국토 대부분이 험준한 알프스 산지입니다. 해발 고도가 100m 높아질 때마다 기온이 약 0.6도씩 낮아지므로 같은 지역이라도 산 위와 아래의 기후가 다릅니다. 경사진 땅은 밭농사에 불리하지만 풀은 잘 자라, 여름에 높은 초원에서 소를 기르고 우유로 치즈를 만드는 낙농업이 발달했습니다. 톱니바퀴 산악 열차와 케이블카로 험한 지형을 극복해 겨울에는 스키, 여름에는 등산 관광이 일 년 내내 이어집니다.' },
   { name: '이집트', symbol: '◌', type: 'accent-mint', tag: '건조/사막', cost: 55000, photo: 'images/egypt.jpg', code: 'eg', lat: 26.8, lon: 29.9,
     desc: '국토 대부분이 사막인 건조 기후 지역이지만, 사막 한가운데를 흐르는 나일강이 물과 비옥한 흙을 가져다주어 문명이 자랐습니다. 강물을 끌어와 농경지에 대는 관개 농업 덕분에 비가 거의 오지 않는 땅에서도 농사를 지을 수 있습니다. 구름과 수증기가 적어 낮에는 몹시 덥고 밤에는 갑자기 추워지므로, 흙벽돌로 벽을 두껍게 쌓고 창문을 작게 내어 열기와 모래바람을 막습니다. 나일강 유역의 피라미드는 고대 문명을 보여 주는 유산이자 중요한 관광 자원입니다.' },
-  { name: '사우디', symbol: '≈', type: 'accent-mint', tag: '오아시스', cost: 60000, photo: 'images/saudi.jpg', code: 'sa', lat: 24.0, lon: 45.0,
+  { name: '사우디', symbol: '≈', type: 'accent-blue', tag: '오아시스', cost: 60000, photo: 'images/saudi.jpg', code: 'sa', lat: 24.0, lon: 45.0,
     desc: '내리는 비보다 증발하는 물이 더 많은 건조 기후로, 국토 대부분이 모래와 자갈로 덮인 사막입니다. 사막 가운데 지하수가 솟아나는 오아시스 주변에서는 대추야자와 밀을 기르는 오아시스 농업이 이루어지고 사람들이 모여 마을을 이룹니다. 대추야자는 뿌리를 깊이 뻗어 지하수를 빨아들이고 강한 햇빛을 잘 견뎌 이곳에서 기르기에 알맞습니다. 물과 풀을 찾아 가축을 몰고 옮겨 다니는 유목 생활이 이어져 왔고, 사막 아래 묻힌 석유가 개발되면서 나라의 모습이 크게 바뀌었습니다.' },
   { name: '케냐', symbol: '✦', type: 'accent-mint', tag: '사바나', cost: 50000, photo: 'images/kenya.jpg', code: 'ke', lat: 0.5, lon: 37.9,
     desc: '적도 부근에 있지만 국토의 상당 부분이 높은 고원이라 수도 나이로비처럼 연중 서늘한 곳이 많습니다. 비가 집중되는 우기와 비가 거의 오지 않는 건기가 뚜렷한 열대 사바나 기후로, 키 큰 풀 사이에 나무가 드문드문 서 있는 초원이 펼쳐집니다. 초식동물과 맹수가 함께 살아가 국립공원을 둘러보며 야생동물을 관찰하는 사파리 생태 관광이 활발합니다. 서늘하고 물이 잘 빠지는 고원에서는 커피와 차를 길러 세계로 수출합니다.' },
-  { name: '콩고(공)', symbol: '◆', type: 'accent-mint', tag: '콩고강', cost: 45000, photo: 'images/congo.jpg', code: 'cd', lat: -2.9, lon: 23.6,
+  { name: '콩고(민)', symbol: '◆', type: 'accent-mint', tag: '콩고강', cost: 45000, photo: 'images/congo.jpg', code: 'cd', lat: -2.9, lon: 23.6,
     desc: '적도가 지나 일 년 내내 덥고 비가 많아, 세계에서 두 번째로 넓은 열대 우림이 펼쳐집니다. 나무들이 이산화 탄소를 빨아들이고 산소를 내보내 지구의 허파라 불리며, 숲을 지키는 일은 기후 변화를 늦추는 데 도움이 됩니다. 경사가 급한 곳에서 물살이 빨라진 콩고강 급류의 바위틈에는 주민들이 거대한 나무 구조물과 대나무 원뿔형 통발을 설치해 물고기를 잡는 전통 어업이 이어집니다. 덥고 습한 기후에서 잘 자라고 척박한 땅도 견디는 카사바가 중요한 식량입니다.' },
   { name: '모로코', symbol: '☾', type: 'accent-mint', tag: '사하라', cost: 50000, photo: 'images/morocco.jpg', code: 'ma', lat: 31.8, lon: -6.5,
     desc: '북쪽 해안은 겨울에 비가 내리는 지중해성 기후라 올리브와 밀을 기를 수 있지만, 아틀라스산맥 남쪽은 세계에서 가장 넓은 사하라 사막이 시작되는 매우 건조한 땅입니다. 한 나라 안에서도 산맥을 경계로 기후와 농사 모습이 크게 달라집니다. 강한 자외선과 모래바람을 막고 땀이 잘 증발하도록 온몸을 헐렁하게 감싸는 긴 전통 옷 젤라바를 입습니다. 옛날에는 낙타를 이끈 대상이 오아시스를 따라 사막을 건너며 소금과 금을 실어 날랐고, 그 길목에 시장과 도시가 자랐습니다.' },
-  { name: '네팔', symbol: '♧', type: 'accent-mint', tag: '히말라야', cost: 55000, photo: 'images/nepal.jpg', code: 'np', lat: 28.3, lon: 84.1,
+  { name: '네팔', symbol: '♧', type: 'accent-blue', tag: '히말라야', cost: 55000, photo: 'images/nepal.jpg', code: 'np', lat: 28.3, lon: 84.1,
     desc: '인도판이 유라시아판과 부딪쳐 밀어 올린 히말라야산맥이 나라 북쪽을 가로지르며, 세계 최고봉 에베레스트산이 자리합니다. 산맥은 지금도 조금씩 높아지고 있습니다. 고도가 높아질수록 공기가 희박해지고 기온이 낮아지는데, 이곳에 사는 셰르파는 그 환경에 적응해 등산객의 짐을 나르고 길을 안내합니다. 산비탈을 계단처럼 깎아 만든 계단식 경작지는 빗물에 흙이 쓸려 내려가는 것을 막고 물을 가두어 농사를 가능하게 합니다.' },
 
   { name: '생태 쉼터', symbol: '🌿', type: 'special-eco', tag: '보너스카드', isSpecial: true, cost: 0, photo: null,
@@ -670,7 +675,8 @@ function spinGlobeTo(lat, lon, marker) {
 
 // 지구본이 도는 데 0.9초, 학생들이 위치를 확인할 시간 0.7초.
 // 지구본에 표시할 좌표가 없는 특수칸은 기다리지 않는다.
-const GLOBE_SPIN_MS = 900, GLOBE_LOOK_MS = 700;
+const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const GLOBE_SPIN_MS = reduceMotion ? 200 : 900, GLOBE_LOOK_MS = reduceMotion ? 200 : 700;
 function globePauseFor(space) {
   return (space && typeof space.lat === 'number') ? GLOBE_SPIN_MS + GLOBE_LOOK_MS : 0;
 }
@@ -706,7 +712,7 @@ function showToast(icon, text, tone = 'info') {
   toastArea.appendChild(el);
   setTimeout(() => el.classList.add('toast-out'), 2600);
   setTimeout(() => el.remove(), 3100);
-  while (toastArea.children.length > 4) toastArea.firstElementChild.remove();
+  while (toastArea.children.length > 2) toastArea.firstElementChild.remove();   // 3개부터 주사위 버튼을 가립니다
 }
 
 // ============================================================
@@ -915,7 +921,7 @@ function updateCurrentTurnUI() {
   if (!current) return;
 
   centerTurnDot.className = `center-turn-dot p-${currentPlayerIndex}`;
-  centerTurnText.innerHTML = `<strong>${current.name}</strong> 님의 차례입니다`;
+  centerTurnText.innerHTML = `<strong>${safeName(current.name)}</strong> 님의 차례입니다`;
 
   if (current.isAI) {
     rollBtnText.textContent = `🤖 ${current.name} 생각 중...`;
@@ -953,7 +959,8 @@ function checkGameOver(reason = 'round') {
   const endByLastMan = gamePlayers.length > 1 && alive.length <= 1;
   const endByRound = gameMode === 'round' && targetMaxRounds > 0 && currentRound > targetMaxRounds;
   const endByTime = gameMode === 'time' && reason === 'time';
-  if (!endByLastMan && !endByRound && !endByTime) return false;
+  const endByTeacher = reason === 'manual';   // 교사가 '게임 끝내기'를 누른 경우
+  if (!endByLastMan && !endByRound && !endByTime && !endByTeacher) return false;
 
   isGameFinished = true;
   rollButton.disabled = true;
@@ -961,7 +968,10 @@ function checkGameOver(reason = 'round') {
   closeAllPlayModals();
   sounds.playFanfare();
 
-  if (endByLastMan) {
+  if (endByTeacher) {
+    gameOverTitle.textContent = '🏁 탐험을 마쳤습니다!';
+    gameOverDesc.textContent = `${currentRound}라운드까지 진행했습니다. 지금까지의 최종 자산 순위입니다.`;
+  } else if (endByLastMan) {
     gameOverTitle.textContent = '🏁 최후의 탐험가!';
     gameOverDesc.textContent = `${currentRound}라운드 만에 ${alive[0] ? alive[0].name : '아무도'} 님을 남기고 모두 파산했습니다. 최종 자산 순위입니다.`;
   } else if (endByTime) {
@@ -984,7 +994,7 @@ function checkGameOver(reason = 'round') {
   victoryRanking.innerHTML = ranking.map((r, rankIdx) => `
     <div class="victory-rank-row ${rankIdx === 0 ? 'rank-1' : ''} ${r.bankrupt ? 'rank-out' : ''}">
       <span class="victory-rank-badge">${r.bankrupt ? '💸 파산' : medals[rankIdx]}</span>
-      <span class="victory-rank-name"><b>${r.name}</b> (현금 ${won(r.cash)})</span>
+      <span class="victory-rank-name"><b>${safeName(r.name)}</b> (현금 ${won(r.cash)})</span>
       <span class="victory-rank-val">${r.bankrupt ? '탈락' : won(r.totalAssets)}</span>
     </div>
   `).join('');
@@ -1047,7 +1057,7 @@ function bankruptPlayer(playerIndex, creditorIndex) {
   removePlayerPiece(playerIndex, player.position);
 
   sounds.playBankrupt();
-  showToast('💸', `<b>${player.name}</b> 님이 파산하여 게임에서 물러났습니다.`, 'bad');
+  showToast('💸', `<b>${safeName(player.name)}</b> 님이 파산하여 게임에서 물러났습니다.`, 'bad');
   addActivityLog(`${player.name} 파산`);
   updateAllRows();
 
@@ -1102,7 +1112,8 @@ function payToll(playerIndex, ownerIndex, spaceIndex) {
       } else {
         btn.classList.add('incorrect');
         sounds.playIncorrect();
-        quizResult.innerHTML = `아쉽습니다. 통행세가 1.2배인 <b class="quiz-amount bad">${won(wrongToll)}</b>이 됩니다.`;
+        revealAnswer(quiz);
+        quizResult.innerHTML = `아쉽습니다. 정답은 <b class="quiz-amount good">${quiz.answer}</b> · 통행세가 1.2배인 <b class="quiz-amount bad">${won(wrongToll)}</b>이 됩니다.`;
       }
       afterQuizAction = () => settleToll(playerIndex, ownerIndex, spaceIndex, correct ? 1 : WRONG_TOLL_RATE);
       specialActions.classList.remove('hidden');
@@ -1123,7 +1134,7 @@ function settleToll(playerIndex, ownerIndex, spaceIndex, multiplier) {
   const useFreePass = () => {
     player.items.splice(player.items.indexOf('toll-free'), 1);
     sounds.playCard();
-    showToast('🎫', `<b>${player.name}</b> 님이 면제권 사용! ${space.name} 통행세 ${won(toll)}을 내지 않았습니다.`, 'good');
+    showToast('🎫', `<b>${safeName(player.name)}</b> 님이 면제권 사용! ${space.name} 통행세 ${won(toll)}을 내지 않았습니다.`, 'good');
     updateAllRows();
     setTimeout(endTurn, 600);
   };
@@ -1132,7 +1143,7 @@ function settleToll(playerIndex, ownerIndex, spaceIndex, multiplier) {
     player.money -= toll;
     owner.money += toll;
     sounds.playCoin();
-    showToast('💸', `<b>${player.name}</b> → <b>${owner.name}</b> · ${space.name} 통행세 <b>${won(toll)}</b>`, 'bad');
+    showToast('💸', `<b>${safeName(player.name)}</b> → <b>${safeName(owner.name)}</b> · ${space.name} 통행세 <b>${won(toll)}</b>`, 'bad');
     updateAllRows();
     setTimeout(endTurn, 700);
   };
@@ -1182,7 +1193,7 @@ function handleAIShortfall(playerIndex, ownerIndex, toll, label) {
     propertyState[land.i].buildings = 0;
     player.money += land.refund;
     updatePropertyTile(land.i);
-    showToast('🏷️', `🤖 <b>${player.name}</b> 님이 ${spaces[land.i].name} 땅을 ${won(land.refund)}에 급히 팔았습니다.`, 'warn');
+    showToast('🏷️', `🤖 <b>${safeName(player.name)}</b> 님이 ${spaces[land.i].name} 땅을 ${won(land.refund)}에 급히 팔았습니다.`, 'warn');
   }
 
   if (player.money >= toll) {
@@ -1190,8 +1201,8 @@ function handleAIShortfall(playerIndex, ownerIndex, toll, label) {
     if (owner) owner.money += toll;
     sounds.playCoin();
     showToast('💸', owner
-      ? `<b>${player.name}</b> → <b>${owner.name}</b> · 통행세 <b>${won(toll)}</b>`
-      : `<b>${player.name}</b> → 🏦 은행 · ${what} <b>${won(toll)}</b>`, 'bad');
+      ? `<b>${safeName(player.name)}</b> → <b>${safeName(owner.name)}</b> · 통행세 <b>${won(toll)}</b>`
+      : `<b>${safeName(player.name)}</b> → 🏦 은행 · ${what} <b>${won(toll)}</b>`, 'bad');
     updateAllRows();
     setTimeout(endTurn, 800);
   } else {
@@ -1212,7 +1223,7 @@ function showSellModal(playerIndex, ownerIndex, toll, label) {
   const sellDesc = document.querySelector('#sell-desc');
   const sellLabel = document.querySelector('#sell-required-label');
   if (sellTitle) sellTitle.textContent = `💸 토지 매각 (${what} 마련)`;
-  if (sellDesc) sellDesc.textContent = `내야 할 돈보다 가진 현금이 적습니다! 소유한 토지를 팔아 현금을 마련하세요. 급매라서 장부가의 ${Math.round(SELL_REFUND_RATE * 100)}%만 돌려받습니다.`;
+  if (sellDesc) sellDesc.textContent = `내야 할 돈보다 가진 현금이 적습니다. 가진 땅을 팔아 돈을 마련하세요. 급하게 파는 것이라 원래 값의 ${Math.round(SELL_REFUND_RATE * 100)}%만 돌려받습니다.`;
   if (sellLabel) sellLabel.textContent = `내야 할 ${what}`;
 
   sellRequiredToll.textContent = won(toll);
@@ -1263,6 +1274,16 @@ function showSellModal(playerIndex, ownerIndex, toll, label) {
 
       sellLandsList.querySelectorAll('.sell-btn').forEach(btn => {
         btn.addEventListener('click', () => {
+          // 되돌릴 수 없는 동작이라 두 번 눌러야 팔립니다.
+          if (btn.dataset.confirm !== 'yes') {
+            sellLandsList.querySelectorAll('.sell-btn').forEach(b => {
+              b.dataset.confirm = ''; b.classList.remove('confirming'); b.textContent = '매각';
+            });
+            btn.dataset.confirm = 'yes';
+            btn.classList.add('confirming');
+            btn.textContent = '정말 팔기';
+            return;
+          }
           const sIdx = Number(btn.dataset.space);
           const refund = Number(btn.dataset.refund);
           propertyState[sIdx].owner = null;
@@ -1286,14 +1307,21 @@ function showSellModal(playerIndex, ownerIndex, toll, label) {
     if (owner) owner.money += toll;
     sounds.playCoin();
     showToast('💸', owner
-      ? `<b>${player.name}</b> → <b>${owner.name}</b> · 통행세 <b>${won(toll)}</b>`
-      : `<b>${player.name}</b> → 🏦 은행 · ${what} <b>${won(toll)}</b>`, 'bad');
+      ? `<b>${safeName(player.name)}</b> → <b>${safeName(owner.name)}</b> · 통행세 <b>${won(toll)}</b>`
+      : `<b>${safeName(player.name)}</b> → 🏦 은행 · ${what} <b>${won(toll)}</b>`, 'bad');
     updateAllRows();
     sellModal.classList.add('hidden');
     endTurn();
   };
 
+  bankruptBtn.dataset.confirm = '';
+  bankruptBtn.textContent = '파산 선언 (게임에서 물러나기)';
   bankruptBtn.onclick = () => {
+    if (bankruptBtn.dataset.confirm !== 'yes') {
+      bankruptBtn.dataset.confirm = 'yes';
+      bankruptBtn.textContent = '정말 파산할까요? (한 번 더 누르기)';
+      return;
+    }
     sellModal.classList.add('hidden');
     bankruptPlayer(playerIndex, ownerIndex === undefined ? null : ownerIndex);
   };
@@ -1308,7 +1336,7 @@ function drawBonusCard(playerIndex) {
   sounds.playCard();
 
   if (player.isAI) {
-    showToast(card.icon, `🤖 <b>${player.name}</b> 님이 <b>${card.name}</b> 카드를 뽑았습니다.`, 'good');
+    showToast(card.icon, `🤖 <b>${safeName(player.name)}</b> 님이 <b>${card.name}</b> 카드를 뽑았습니다.`, 'good');
     setTimeout(() => applyBonusCard(playerIndex, card), 900);
     return;
   }
@@ -1327,7 +1355,7 @@ function applyBonusCard(playerIndex, card) {
 
   if (card.keep) {
     player.items.push(card.id);
-    showToast(card.icon, `<b>${player.name}</b> 님이 <b>${card.name}</b>을(를) 얻었습니다.`, 'good');
+    showToast(card.icon, `<b>${safeName(player.name)}</b> 님이 <b>${card.name}</b>을(를) 얻었습니다.`, 'good');
     updateAllRows();
     setTimeout(endTurn, 500);
     return;
@@ -1410,7 +1438,7 @@ function teleportTo(playerIndex, spaceIndex) {
   removePlayerPiece(playerIndex, player.position);
   player.position = spaceIndex;
   renderPlayerPiece(playerIndex, spaceIndex);
-  showToast('✈️', `<b>${player.name}</b> 님이 <b>${spaces[spaceIndex].name}</b>(으)로 날아갔습니다.`, 'info');
+  showToast('✈️', `<b>${safeName(player.name)}</b> 님이 <b>${spaces[spaceIndex].name}</b>(으)로 날아갔습니다.`, 'info');
 
   if (passedStart) {
     player.money += salaryBonus;
@@ -1431,7 +1459,7 @@ function handleAIQuiz(playerIndex, spaceIndex, quiz, isSpecial, space, onDone, k
   activeQuizSpace = spaceIndex;
 
   aiQuizBanner.classList.remove('hidden');
-  aiQuizBanner.innerHTML = `<span class="ai-pulse-dot"></span> 🤖 <b>${player.name}</b>가 퀴즈를 읽고 있습니다...`;
+  aiQuizBanner.innerHTML = `<span class="ai-pulse-dot"></span> 🤖 <b>${safeName(player.name)}</b>가 퀴즈를 읽고 있습니다...`;
 
   const isBuild = kind === 'build';
   quizEyebrow.textContent = isSpecial ? 'AI SPECIAL EXPLORATION CHALLENGE'
@@ -1474,7 +1502,7 @@ function handleAIQuiz(playerIndex, spaceIndex, quiz, isSpecial, space, onDone, k
         } else if (isSpecial) {
           player.money += specialQuizReward;
           sounds.playCoin();
-          showToast('🎓', `🤖 <b>${player.name}</b> 정답! 장학금 <b>${won(specialQuizReward)}</b>`, 'good');
+          showToast('🎓', `🤖 <b>${safeName(player.name)}</b> 정답! 장학금 <b>${won(specialQuizReward)}</b>`, 'good');
           updateAllRows();
         } else {
           player.money += landQuizReward;
@@ -1488,12 +1516,13 @@ function handleAIQuiz(playerIndex, spaceIndex, quiz, isSpecial, space, onDone, k
             updateAllRows();
             updatePropertyTile(spaceIndex);
             quizResult.textContent = `🤖 ${player.name} 정답! 토지(${won(price)}) 매입 완료`;
-            showToast('🏳️', `🤖 <b>${player.name}</b> 님이 ${space.name} 땅을 <b>${won(price)}</b>에 샀습니다.`, 'good');
+            showToast('🏳️', `🤖 <b>${safeName(player.name)}</b> 님이 ${space.name} 땅을 <b>${won(price)}</b>에 샀습니다.`, 'good');
           }
         }
       } else {
         matched.btn.classList.add('incorrect');
         sounds.playIncorrect();
+        revealAnswer(quiz);
         quizResult.textContent = isBuild ? `🤖 ${player.name} 오답! 건물을 짓지 못합니다.`
           : onDone ? `🤖 ${player.name} 오답! 통행세를 1.2배로 냅니다.`
           : `🤖 ${player.name} 오답 선택!`;
@@ -1525,7 +1554,7 @@ const DISASTERS = [
     learn: '비가 한 계절에 몰려 내리는 지역일수록 홍수 피해가 자주 일어납니다.',
     cost: (o) => 30000 + o.lands * 8000 },
 
-  { id: 'quake', icon: '🌍', name: '지진', fits: ['화산', '지열', '히말라야', '안데스', '고산', '사하라'],
+  { id: 'quake', icon: '🌍', name: '지진', fits: ['화산', '지열', '히말라야', '안데스', '고산', '모로코'],
     story: (s) => `${s.name} 부근에서 땅이 크게 흔들렸습니다. 무너진 도로와 다리를 고치는 데 힘을 보탭니다.`,
     learn: '판과 판이 부딪치는 경계에서는 지진과 화산 활동이 활발합니다.',
     cost: (o) => 25000 + o.buildings * 25000 },
@@ -1540,12 +1569,12 @@ const DISASTERS = [
     learn: '강수량이 적은 지역에서는 물을 얻고 나누는 일이 가장 큰 과제입니다.',
     cost: () => 35000 },
 
-  { id: 'volcano', icon: '🌋', name: '화산 폭발', fits: ['화산', '지열', '우림', '빙하'],
+  { id: 'volcano', icon: '🌋', name: '화산 폭발', fits: ['화산', '지열', '우림', '빙하', '이탈리아'],
     story: (s) => `${s.name} 근처 화산이 화산재를 높이 뿜어냈습니다. 비행기가 멈춰 손해를 봅니다.`,
     learn: '화산재는 하늘 높이 올라가 항공기 운항을 막기도 합니다.',
     cost: () => 40000 },
 
-  { id: 'wildfire', icon: '🔥', name: '산불', fits: ['지중해', '냉대', '침엽', '아마존', '우림', '산호초', '사바나'],
+  { id: 'wildfire', icon: '🔥', name: '산불', fits: ['지중해', '냉대', '침엽', '아마존', '우림', '산호초', '사바나', '콩고'],
     story: (s) => `${s.name}에 메마른 바람이 이어져 큰 산불이 났습니다. 불을 끄는 비용을 함께 냅니다.`,
     learn: '여름이 덥고 건조한 지역과 넓은 침엽수림에서는 산불이 크게 번지기 쉽습니다.',
     cost: (o) => 25000 + o.lands * 10000 },
@@ -1570,7 +1599,7 @@ const DISASTERS = [
     learn: '사막에서는 바람에 실린 모래가 마을과 도로를 덮어 생활을 어렵게 만듭니다.',
     cost: () => 30000 },
 
-  { id: 'heatwave', icon: '🌡️', name: '폭염', fits: ['지중해', '서안해양성', '계절풍', '온대기후', '오아시스', '평야'],
+  { id: 'heatwave', icon: '🌡️', name: '폭염', fits: ['지중해', '서안해양성', '계절풍', '온대기후', '오아시스', '평야', '하천교통'],
     story: (s) => `${s.name}에 기록적인 더위가 이어졌습니다. 물과 전기를 사느라 가진 돈의 8%를 씁니다.`,
     learn: '지구의 평균 기온이 오르면서 예전에는 드물던 폭염이 자주 나타나고 있습니다.',
     cost: (o) => Math.max(20000, Math.round(o.money * 0.08 / 1000) * 1000) },
@@ -1622,7 +1651,7 @@ function triggerDisaster(playerIndex, spaceIndex) {
   const finish = () => payToBank(playerIndex, amount, `${card.name} 복구비`);
 
   if (player.isAI) {
-    showToast(card.icon, `🤖 <b>${player.name}</b> · ${space.name}에 ${card.name}! 복구비 <b>${won(amount)}</b>`, 'bad');
+    showToast(card.icon, `🤖 <b>${safeName(player.name)}</b> · ${space.name}에 ${card.name}! 복구비 <b>${won(amount)}</b>`, 'bad');
     setTimeout(finish, 1200);
     return;
   }
@@ -1644,7 +1673,7 @@ function payToBank(playerIndex, amount, label) {
     if (player.money >= amount) {
       player.money -= amount;
       sounds.playCoin();
-      showToast('🏦', `🤖 <b>${player.name}</b> → 은행 · ${label} <b>${won(amount)}</b>`, 'bad');
+      showToast('🏦', `🤖 <b>${safeName(player.name)}</b> → 은행 · ${label} <b>${won(amount)}</b>`, 'bad');
       updateAllRows();
       setTimeout(endTurn, 700);
     } else {
@@ -1656,12 +1685,20 @@ function payToBank(playerIndex, amount, label) {
   if (player.money >= amount) {
     player.money -= amount;
     sounds.playCoin();
-    showToast('🏦', `<b>${player.name}</b> → 은행 · ${label} <b>${won(amount)}</b>`, 'bad');
+    showToast('🏦', `<b>${safeName(player.name)}</b> → 은행 · ${label} <b>${won(amount)}</b>`, 'bad');
     updateAllRows();
     setTimeout(endTurn, 700);
   } else {
     showSellModal(playerIndex, null, amount, label);
   }
+}
+
+// 틀렸을 때 정답이 무엇이었는지 화면에 표시합니다.
+// 오답에서 배우려면 정답을 봐야 하는데, 예전에는 알려 주지 않고 창이 닫혔습니다.
+function revealAnswer(quiz) {
+  [...quizOptions.querySelectorAll('button')].forEach(b => {
+    if (b.textContent === quiz.answer) b.classList.add('correct');
+  });
 }
 
 // ============================================================
@@ -1725,7 +1762,8 @@ function resolveLanding(playerIndex) {
         } else {
           btn.classList.add('incorrect');
           sounds.playIncorrect();
-          quizResult.textContent = '아쉽게도 정답이 아닙니다.';
+          revealAnswer(quiz);
+          quizResult.innerHTML = `아쉽게도 정답이 아닙니다. 정답은 <b class="quiz-amount good">${quiz.answer}</b> 입니다.`;
         }
         specialActions.classList.remove('hidden');
       });
@@ -1783,8 +1821,10 @@ function resolveLanding(playerIndex) {
         } else {
           btn.classList.add('incorrect');
           sounds.playIncorrect();
-          quizResult.textContent = '아쉽게도 틀렸습니다. 이번 턴에는 구매할 수 없습니다.';
-          setTimeout(() => { quizModal.classList.add('hidden'); endTurn(); }, 1800);
+          revealAnswer(quiz);
+          quizResult.innerHTML = `아쉽게도 틀렸습니다. 정답은 <b class="quiz-amount good">${quiz.answer}</b> 입니다.`;
+          afterQuizAction = null;
+          specialActions.classList.remove('hidden');
         }
       });
       quizOptions.appendChild(btn);
@@ -1829,7 +1869,7 @@ function offerBuild(playerIndex, spaceIndex) {
   if (player.isAI) {
     handleAIQuiz(playerIndex, spaceIndex, quiz, false, space, (correct) => {
       if (!correct) {
-        showToast('🏠', `🤖 <b>${player.name}</b> 님이 건축 문제를 틀려 건물을 짓지 못했습니다.`, 'info');
+        showToast('🏠', `🤖 <b>${safeName(player.name)}</b> 님이 건축 문제를 틀려 건물을 짓지 못했습니다.`, 'info');
         setTimeout(endTurn, 600);
         return;
       }
@@ -1872,8 +1912,10 @@ function offerBuild(playerIndex, spaceIndex) {
       } else {
         btn.classList.add('incorrect');
         sounds.playIncorrect();
-        quizResult.textContent = '아쉽게도 틀렸습니다. 이번 턴에는 건물을 지을 수 없습니다.';
-        setTimeout(() => { quizModal.classList.add('hidden'); endTurn(); }, 1800);
+        revealAnswer(quiz);
+        quizResult.innerHTML = `아쉽게도 틀렸습니다. 정답은 <b class="quiz-amount good">${quiz.answer}</b> 입니다.`;
+        afterQuizAction = null;
+        specialActions.classList.remove('hidden');
       }
     });
     quizOptions.appendChild(btn);
@@ -1907,7 +1949,7 @@ function showBuildChoice(playerIndex, spaceIndex) {
   if (player.isAI) {
     if (hasFree) build(true);
     else if (player.money - cost >= 60000) build(false);
-    else { showToast('🏳️', `🤖 <b>${player.name}</b> 님이 ${space.name}에서 쉬어 갑니다.`, 'info'); setTimeout(endTurn, 700); }
+    else { showToast('🏳️', `🤖 <b>${safeName(player.name)}</b> 님이 ${space.name}에서 쉬어 갑니다.`, 'info'); setTimeout(endTurn, 700); }
     return;
   }
 
@@ -1931,11 +1973,13 @@ function showBuildChoice(playerIndex, spaceIndex) {
 // 이동 애니메이션
 // ============================================================
 async function movePlayerStepByStep(playerIndex, steps) {
+  if (isGameFinished) return;
   isMoving = true;
   rollButton.disabled = true;
   const player = gamePlayers[playerIndex];
 
   for (let s = 1; s <= steps; s += 1) {
+    if (isGameFinished) { isMoving = false; return; }   // 종료 뒤에는 월급도 더 주지 않습니다
     const prevPos = player.position;
     const nextPos = (prevPos + 1) % spaces.length;
 
@@ -1951,10 +1995,10 @@ async function movePlayerStepByStep(playerIndex, steps) {
       player.money += salaryBonus;
       sounds.playCoin();
       updatePlayerRow(playerIndex);
-      showToast('💵', `<b>${player.name}</b> 님이 출발지를 지나 월급 <b>${won(salaryBonus)}</b>을 받았습니다.`, 'good');
+      showToast('💵', `<b>${safeName(player.name)}</b> 님이 출발지를 지나 월급 <b>${won(salaryBonus)}</b>을 받았습니다.`, 'good');
     }
 
-    await new Promise(resolve => setTimeout(resolve, 240));
+    await new Promise(resolve => setTimeout(resolve, reduceMotion ? 60 : 240));
     if (piece) piece.classList.remove('stepping');
   }
 
@@ -2089,7 +2133,7 @@ buyProperty.addEventListener('click', () => {
     updateAllRows();
     updatePropertyTile(activeQuizSpace);
     quizResult.textContent = `구매 완료! ${won(price)}을 지불했습니다.`;
-    showToast('🏳️', `<b>${player.name}</b> 님이 ${space.name} 땅을 <b>${won(price)}</b>에 샀습니다.`, 'good');
+    showToast('🏳️', `<b>${safeName(player.name)}</b> 님이 ${space.name} 땅을 <b>${won(price)}</b>에 샀습니다.`, 'good');
   } else {
     sounds.playIncorrect();
     quizResult.textContent = '잔액이 부족하여 토지를 구매할 수 없습니다.';
@@ -2117,6 +2161,22 @@ claimSpecial.addEventListener('click', () => {
 });
 
 restartGameBtn.addEventListener('click', () => location.reload());
+
+if (finishNowBtn) {
+  finishNowBtn.addEventListener('click', () => {
+    if (!gamePlayers.length || isGameFinished) return;
+    openChoiceModal({
+      eyebrow: 'TEACHER · 수업 정리',
+      icon: '🏁',
+      title: '게임을 지금 끝낼까요?',
+      desc: `${currentRound}라운드까지 진행했습니다. 지금 끝내면 현재까지의 자산으로 순위를 발표합니다.`,
+      buttons: [
+        { label: '지금 끝내고 순위 보기', primary: true, onClick: () => checkGameOver('manual') },
+        { label: '계속하기', onClick: () => {} }
+      ]
+    });
+  });
+}
 
 // ============================================================
 // 설정 화면
