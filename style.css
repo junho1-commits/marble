@@ -122,13 +122,41 @@ button { font: inherit; }
   font-weight: 900 !important;
 }
 
-.quiz-result {
+.quiz-card .quiz-result {
   min-height: 26px;
   margin-top: 18px !important;
   color: var(--orange) !important;
   font-weight: 900;
   font-size: clamp(18px, 2.2vw, 24px);
 }
+
+/* 재해 안내문 아래에 붙는 교과 연계 한 줄 */
+.disaster-learn {
+  display: inline-block;
+  padding: 8px 12px;
+  border: 2px dashed var(--ink);
+  border-radius: 8px;
+  background: #fffcf0;
+  font-size: .92em;
+  line-height: 1.5;
+}
+
+/* 통행세 금액처럼 아이들이 한눈에 봐야 하는 숫자는 더 크고 진하게 */
+.quiz-amount {
+  display: inline-block;
+  padding: 2px 10px;
+  border: 2.5px solid var(--ink);
+  border-radius: 8px;
+  background: var(--white);
+  box-shadow: 2px 2px 0 var(--ink);
+  font-size: 1.5em;
+  font-weight: 900;
+  line-height: 1.25;
+  vertical-align: -2px;
+}
+
+.quiz-amount.good { color: #15803d; }
+.quiz-amount.bad  { color: #dc2626; }
 
 .quiz-explanation {
   margin-top: 16px;
@@ -1493,7 +1521,8 @@ button { font: inherit; }
   }
   .quiz-options { gap: 8px; margin-top: 8px; }
   .quiz-options button { padding: 11px 16px; font-size: clamp(15px, 1.6vw, 19px); line-height: 1.35; }
-  .quiz-result { margin-top: 11px !important; font-size: clamp(15px, 1.6vw, 19px); min-height: 20px; }
+  .quiz-card .quiz-result { margin-top: 11px !important; font-size: clamp(17px, 1.8vw, 21px); min-height: 20px; }
+  .quiz-amount { padding: 1px 8px; font-size: 1.4em; }
   .quiz-explanation { margin-top: 10px; padding: 11px 14px; font-size: clamp(14px, 1.35vw, 17px); line-height: 1.45; }
   .purchase-actions { margin-top: 11px; }
   .purchase-actions p { font-size: 16px; margin-bottom: 7px; }

@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Jua&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260822_01" />
+    <link rel="stylesheet" href="style.css?v=20260822_13" />
   </head>
   <body>
     <!-- 게임 설정 모달 -->
@@ -89,20 +89,20 @@
     <!-- 토지 매각 / 통행세 긴급 조달 모달 -->
     <div id="sell-modal" class="setup-modal hidden">
       <div class="setup-card sell-card">
-        <p class="setup-eyebrow" style="color: #ef4343 !important;">EMERGENCY LIQUIDATION · 통행세 부족</p>
+        <p class="setup-eyebrow" style="color: #ef4343 !important;">EMERGENCY LIQUIDATION · 현금 부족</p>
         <h1 id="sell-title" style="color: #ef4343;">💸 토지 매각 (통행세 마련)</h1>
         <p id="sell-desc" class="sell-desc">
           통행세를 지불하기에 현금이 부족합니다! 소유한 토지를 매각하여 필요한 현금을 마련하세요.
         </p>
         <div class="sell-status-box">
-          <div class="sell-stat"><span class="lbl">지불해야 할 통행세</span><strong id="sell-required-toll" class="val red">₩0</strong></div>
+          <div class="sell-stat"><span class="lbl" id="sell-required-label">내야 할 통행세</span><strong id="sell-required-toll" class="val red">₩0</strong></div>
           <div class="sell-stat"><span class="lbl">현재 보유 현금</span><strong id="sell-current-money" class="val">₩0</strong></div>
           <div class="sell-stat"><span class="lbl">부족한 금액</span><strong id="sell-deficit-money" class="val orange">₩0</strong></div>
         </div>
-        <div class="setup-section-label" style="font-size: 14px; margin-top: 16px;">매각 가능한 내 토지 목록 (원가의 100% 환급)</div>
+        <div class="setup-section-label" style="font-size: 14px; margin-top: 16px;">매각 가능한 내 토지 목록 (급매 — 장부가의 60%만 받습니다)</div>
         <div id="sell-lands-list" class="sell-lands-list"></div>
         <div id="sell-action-footer" class="sell-action-footer">
-          <button id="pay-toll-btn" class="start-game" disabled>통행세 완납 및 턴 종료</button>
+          <button id="pay-toll-btn" class="start-game" disabled>완납 및 턴 종료</button>
           <button id="bankrupt-btn" class="bankrupt-btn hidden">파산 선언 (게임 종료)</button>
         </div>
       </div>
@@ -400,8 +400,8 @@
     </main>
 
 
-    <script src="worldmap.js?v=20260822_01"></script>
-    <script src="questions.js?v=20260822_01"></script>
-    <script src="script.js?v=20260822_01"></script>
+    <script src="worldmap.js?v=20260822_13"></script>
+    <script src="questions.js?v=20260822_13"></script>
+    <script src="script.js?v=20260822_13"></script>
   </body>
 </html>
