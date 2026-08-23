@@ -1577,3 +1577,209 @@ button { font: inherit; }
   .purchase-actions button { padding: 11px 10px; font-size: 16px; }
   .ai-quiz-banner { padding: 7px 14px; font-size: 14px; margin-bottom: 9px; }
 }
+
+
+/* ============================================================
+   수업용 학습 장치 — 건물 짓기 버튼 · 해설 형광펜 · 탐험 리포트 · 오답 노트
+   ============================================================ */
+
+/* 주사위 옆 '건물 짓기' 버튼 — 굴리기 전에 전략을 세우는 자리 */
+.build-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 11px 16px;
+  border: 2px solid var(--ink);
+  background: var(--white);
+  color: var(--ink);
+  cursor: pointer;
+  font: 14px "DM Mono", monospace;
+  font-weight: bold;
+  letter-spacing: .03em;
+  transition: background .15s, transform .1s;
+  border-radius: 4px;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.build-button:hover:not(:disabled) { background: var(--yellow); transform: translateY(-2px); }
+.build-button:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* 건물 지을 땅 고르기 — 나라 이름과 값이 한눈에 보이도록 두 칸으로 */
+.card-choices.build-choices { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.card-choices.build-choices .card-choice-btn { padding: 12px 10px; text-align: left; align-items: flex-start; }
+.card-choices.build-choices .card-choice-btn strong { font-size: 17px; }
+.card-choices.build-choices .card-choice-btn span { font-size: 12px; }
+.card-choice-btn:disabled { opacity: .45; cursor: not-allowed; background: #f2efe9; }
+.card-choice-btn:disabled:hover { transform: none; background: #f2efe9; }
+
+/* 해설을 읽는 동안 넘어가는 버튼을 잠시 잠급니다 */
+button.read-wait { opacity: .55; cursor: progress; }
+
+/* 해설 속 교과 핵심어 형광펜 */
+mark.quiz-key {
+  background: linear-gradient(transparent 55%, #ffe27a 55%);
+  color: inherit;
+  font-weight: 700;
+  padding: 0 1px;
+  border-radius: 2px;
+}
+
+/* ── 게임 종료 화면: 사회과 탐험 리포트 */
+.report-section { margin-top: 22px; padding-top: 16px; border-top: 2px dashed var(--line); }
+.report-heading { margin: 0 0 12px; color: var(--ink); font: 22px "Jua", sans-serif; }
+.learning-report { display: grid; gap: 10px; }
+
+.report-card {
+  padding: 14px 16px;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  background: var(--white);
+}
+.report-card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.report-avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  color: var(--white);
+  font: 700 13px "DM Mono", monospace;
+}
+.report-avatar.p-0 { background: var(--orange); }
+.report-avatar.p-1 { background: #3f798f; }
+.report-avatar.p-2 { background: #d6a500; }
+.report-avatar.p-3 { background: #4a9b70; }
+.report-name { flex: 1; text-align: left; font: 700 17px "Jua", sans-serif; color: var(--ink); }
+.report-continent {
+  padding: 3px 9px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: var(--mint);
+  font: 700 12px "DM Mono", monospace;
+  color: var(--ink);
+}
+
+.report-rate-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.report-rate-label { font: 700 13px "DM Mono", monospace; color: #5f5c53; }
+.report-rate-val { font: 14px "Space Grotesk", sans-serif; color: var(--ink); }
+.report-rate-val b { color: var(--orange); font-size: 16px; }
+
+.report-bar {
+  height: 12px;
+  margin: 7px 0 11px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: #efeae0;
+  overflow: hidden;
+}
+.report-bar span { display: block; height: 100%; background: var(--orange); transition: width .5s ease; }
+
+.report-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.badge {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 10px;
+  border: 1.5px solid var(--ink);
+  border-radius: 5px;
+  background: #fff8dd;
+}
+.badge b { font: 700 13px "Jua", sans-serif; color: var(--ink); }
+.badge i { font: 11px "DM Mono", monospace; font-style: normal; color: #7c7870; }
+
+.victory-actions { display: grid; gap: 8px; margin-top: 18px; }
+.review-button {
+  width: 100%;
+  padding: 13px 16px;
+  border: 2px solid var(--ink);
+  border-radius: 5px;
+  background: var(--yellow);
+  color: var(--ink);
+  cursor: pointer;
+  font: 700 15px "DM Mono", monospace;
+  transition: background .15s;
+}
+.review-button:hover { background: #ffd96a; }
+
+/* ── 오답 노트 */
+.review-card { width: min(880px, 96vw) !important; }
+.review-summary { font-size: 15px !important; color: #5f5c53; }
+.review-list { display: grid; gap: 14px; margin: 14px 0 18px; }
+.review-empty { text-align: center; padding: 26px; font: 18px "Jua", sans-serif; color: var(--ink); }
+
+.review-group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--ink);
+  font: 700 17px "Jua", sans-serif;
+  color: var(--ink);
+}
+.review-item {
+  padding: 13px 15px;
+  margin-bottom: 8px;
+  border: 2px solid var(--ink);
+  border-left: 7px solid var(--orange);
+  border-radius: 5px;
+  background: var(--white);
+}
+.review-item p { margin: 0 0 6px !important; }
+.review-q { font: 16px "Space Grotesk", sans-serif !important; color: var(--ink) !important; line-height: 1.45 !important; }
+.review-no {
+  display: inline-grid;
+  place-items: center;
+  width: 21px;
+  height: 21px;
+  margin-right: 4px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--white);
+  font: 700 12px "DM Mono", monospace;
+}
+.review-picked { font: 13px "DM Mono", monospace !important; color: #9a4b3b !important; }
+.review-answer { font: 15px "Space Grotesk", sans-serif !important; color: var(--ink) !important; }
+.review-answer b { color: #2f7a52; }
+.review-explain {
+  padding: 9px 11px;
+  margin-bottom: 0 !important;
+  border-radius: 4px;
+  background: #f3efe5;
+  font: 14px "Space Grotesk", sans-serif !important;
+  color: #4a4740 !important;
+  line-height: 1.55 !important;
+}
+.review-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+/* 오답 노트를 종이로 뽑을 때는 노트만 남깁니다 */
+@media print {
+  body * { visibility: hidden; }
+  #review-modal, #review-modal * { visibility: visible; }
+  #review-modal {
+    position: absolute;
+    inset: 0;
+    display: block;
+    padding: 0;
+    background: #fff;
+    backdrop-filter: none;
+  }
+  .review-card {
+    width: 100% !important;
+    max-height: none !important;
+    border: none;
+    box-shadow: none;
+    background: #fff;
+  }
+  .review-actions, .setup-eyebrow { display: none !important; }
+  .review-item { break-inside: avoid; }
+}
+
+/* 세로가 짧은 크롬북 화면에서 버튼이 겹치지 않도록 */
+@media (max-height: 760px) {
+  .build-button { margin-top: 5px; padding: 8px 13px; font-size: 12px; }
+  .report-card { padding: 10px 12px; }
+  .report-heading { font-size: 19px; }
+}

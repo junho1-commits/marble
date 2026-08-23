@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Jua&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260823_07" />
+    <link rel="stylesheet" href="style.css?v=20260824_01" />
   </head>
   <body>
     <!-- 게임 설정 모달 -->
@@ -138,10 +138,33 @@
         <h1 id="game-over-title">🏆 탐험 결과 발표</h1>
         <p id="game-over-desc">게임이 종료되었습니다! 최종 자산 순위입니다.</p>
         <div id="victory-ranking" class="victory-ranking"></div>
-        <button id="restart-game" class="start-game" style="margin-top: 20px;">다시 플레이하기 <span>↺</span></button>
+
+        <div class="report-section">
+          <h2 class="report-heading">🌍 사회과 탐험 리포트</h2>
+          <div id="learning-report" class="learning-report"></div>
+        </div>
+
+        <div class="victory-actions">
+          <button id="open-review" class="review-button">📝 오늘 푼 퀴즈 오답 복습하기 (공책 정리)</button>
+          <button id="restart-game" class="start-game">다시 플레이하기 <span>↺</span></button>
+        </div>
       </div>
     </div>
 
+
+    <!-- 오답 노트 — 수업 정리용 -->
+    <div id="review-modal" class="setup-modal hidden">
+      <div class="setup-card review-card">
+        <p class="setup-eyebrow">REVIEW · 배움공책 정리</p>
+        <h1>📝 오늘 틀린 문제 다시 보기</h1>
+        <p id="review-summary" class="review-summary"></p>
+        <div id="review-list" class="review-list"></div>
+        <div class="review-actions">
+          <button id="print-review" class="review-button">🖨️ 인쇄하기</button>
+          <button id="close-review" class="start-game">닫기</button>
+        </div>
+      </div>
+    </div>
 
     <!-- 보너스 카드 · 선택 확인 공용 모달 -->
     <div id="card-modal" class="setup-modal hidden">
@@ -212,6 +235,10 @@
                     <button id="roll-button" class="roll-button">
                       <span id="roll-btn-text">주사위 굴리기</span>
                       <span class="button-arrow">🎲</span>
+                    </button>
+                    <button id="build-button" class="build-button hidden" disabled>
+                      <span id="build-btn-text">건물 짓기</span>
+                      <span class="button-arrow">🏗️</span>
                     </button>
                   </div>
                 </div>
@@ -403,8 +430,8 @@
     </main>
 
 
-    <script src="worldmap.js?v=20260823_07"></script>
-    <script src="questions.js?v=20260823_07"></script>
-    <script src="script.js?v=20260823_07"></script>
+    <script src="worldmap.js?v=20260824_01"></script>
+    <script src="questions.js?v=20260824_01"></script>
+    <script src="script.js?v=20260824_01"></script>
   </body>
 </html>

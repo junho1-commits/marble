@@ -13,7 +13,7 @@
       --paper: #f5f1e9;
       --card-bg: #fffdf7;
       --line: #c9c3b7;
-      --orange: #ef6a43;
+      --orange: #b23c0a;
       --yellow: #f4c84e;
       --blue: #3f798f;
       --green: #2e7d5e;
@@ -68,16 +68,17 @@
 
     /* 상단 네비게이션 탭 */
     .tab-nav {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);   /* 여섯 칸을 3×2로 고르게 */
       gap: 8px;
       margin-bottom: 24px;
-      overflow-x: auto;
       padding-bottom: 6px;
     }
+    @media (max-width: 560px) {
+      .tab-nav { grid-template-columns: repeat(2, 1fr); }
+    }
     .tab-btn {
-      flex: 1;
-      min-width: 140px;
-      padding: 12px 14px;
+      padding: 12px 16px;
       background: var(--card-bg);
       border: 2px solid var(--ink);
       border-radius: 8px;
@@ -282,17 +283,18 @@
 
     <!-- 네비게이션 탭 -->
     <nav class="tab-nav">
-      <button class="tab-btn active" onclick="openTab('tab-start', this)">🏁 1. 게임 시작하기</button>
-      <button class="tab-btn" onclick="openTab('tab-turn', this)">🎲 2. 턴 진행 & 퀴즈</button>
-      <button class="tab-btn" onclick="openTab('tab-land', this)">🏰 3. 땅 매입 & 통행세</button>
-      <button class="tab-btn" onclick="openTab('tab-special', this)">🌿 4. 생태쉼터 & 특수칸</button>
-      <button class="tab-btn" onclick="openTab('tab-win', this)">🏆 5. 승리 & 파산 규칙</button>
+      <button class="tab-btn active" onclick="openTab('tab-start', this)">1. 게임 시작하기</button>
+      <button class="tab-btn" onclick="openTab('tab-turn', this)">2. 턴 진행과 퀴즈</button>
+      <button class="tab-btn" onclick="openTab('tab-land', this)">3. 땅 매입과 통행세</button>
+      <button class="tab-btn" onclick="openTab('tab-special', this)">4. 생태 쉼터와 특수칸</button>
+      <button class="tab-btn" onclick="openTab('tab-win', this)">5. 승리와 파산 규칙</button>
+      <button class="tab-btn" onclick="openTab('tab-teacher', this)">선생님께</button>
     </nav>
 
     <!-- 1. 게임 시작하기 -->
     <div id="tab-start" class="tab-pane active">
       <div class="guide-card">
-        <h2>🏁 게임 인원 및 승리 모드 설정</h2>
+        <h2>게임 인원 및 승리 모드 설정</h2>
         <div class="step-list">
           <div class="step-item">
             <div class="step-num">1</div>
@@ -305,15 +307,17 @@
             <div class="step-num">2</div>
             <div class="step-body">
               <h4>승리 종료 방식 선택</h4>
-              <p><strong>라운드제:</strong> 정해진 라운드(5, 10, 15라운드)를 모두 마쳤을 때 총자산이 가장 많은 사람이 우승합니다.<br>
-              <strong>시간 제한제 ⏱️:</strong> 수업 시간에 맞춰 3분, 5분, 10분 타이머를 설정하고 시간이 종료되었을 때 순위를 가립니다.</p>
+              <p><strong>라운드제:</strong> 정해진 라운드(5, 10, 15라운드)를 모두 마쳤을 때 총자산이 가장 많은 사람이 우승합니다. 40분 수업에는 <strong>10라운드(약 14분)</strong>가 알맞습니다.<br>
+              <strong>시간 제한제 ⏱️:</strong> 3분, 5분, 10분 타이머를 설정하고 시간이 끝났을 때 순위를 가립니다. 다만 4인 기준 5분은 4라운드밖에 못 돌아 땅이 다 팔리기 전에 끝납니다.<br>
+              <strong>무제한 · 파산할 때까지 🏦:</strong> 라운드로 끝나지 않고 마지막 한 명이 남을 때까지 계속합니다. 오래 걸리므로 <strong>수업보다는 집에서</strong> 쓰기 좋습니다.</p>
+              <p>어느 방식을 골랐든 화면 위쪽 <strong>[🏁 게임 끝내기]</strong> 버튼을 누르면 지금까지의 자산으로 순위를 발표하고 끝낼 수 있습니다. 종이 쳤을 때 쓰세요.</p>
             </div>
           </div>
           <div class="step-item">
             <div class="step-num">3</div>
             <div class="step-body">
               <h4>시작 자금 및 완주 월급</h4>
-              <p>모든 탐험가는 <strong>시작 자금 ₩350,000</strong>을 가지고 출발지에서 시작합니다. 보드를 한 바퀴 돌아 출발지를 통과할 때마다 <strong>월급 ₩70,000</strong>을 받습니다.</p>
+              <p>모든 탐험가는 <strong>시작 자금 ₩350,000</strong>을 가지고 출발지에서 시작합니다. 보드를 한 바퀴 돌아 출발지를 <strong>지나갈 때마다 월급 ₩70,000</strong>을 받고, 주사위 눈이 딱 맞아 <strong>출발지에 정확히 도착하면 완주 보너스 ₩30,000</strong>을 더 받습니다.</p>
             </div>
           </div>
         </div>
@@ -323,7 +327,7 @@
     <!-- 2. 턴 진행 & 퀴즈 -->
     <div id="tab-turn" class="tab-pane">
       <div class="guide-card">
-        <h2>🎲 내 차례의 4단계 진행 순서</h2>
+        <h2>내 차례의 4단계 진행 순서</h2>
         <div class="step-list">
           <div class="step-item">
             <div class="step-num">1</div>
@@ -349,8 +353,9 @@
           <div class="step-item">
             <div class="step-num">4</div>
             <div class="step-body">
-              <h4>교과서 탐험 퀴즈 풀기 💡</h4>
-              <p>도착한 칸의 퀴즈가 대형 창으로 나타납니다. 3개의 보기 중 정답을 맞히면 <strong>탐험 수당 ₩5,000</strong>을 획득하고 땅을 살 수 있는 권리가 주어집니다!</p>
+              <h4>교과서 탐험 퀴즈 풀기</h4>
+              <p>도착한 칸의 퀴즈가 큰 창으로 나타납니다. 3개의 보기 중 정답을 맞히면 <strong>탐험 수당 ₩5,000</strong>을 받고 땅을 살 수 있는 권리가 생깁니다.</p>
+              <p><strong>틀려도 정답을 알려 줍니다.</strong> 고른 보기에는 ✕, 정답에는 ✓ 표시가 붙고 <strong>💡 교과서 탐구</strong> 해설이 함께 나옵니다. 다 읽고 <strong>[확인]</strong>을 눌러야 다음으로 넘어가니 천천히 읽어도 됩니다.</p>
             </div>
           </div>
         </div>
@@ -360,7 +365,7 @@
     <!-- 3. 땅 매입 & 통행세 -->
     <div id="tab-land" class="tab-pane">
       <div class="guide-card">
-        <h2>🏰 땅 매입, 건물 증축 및 통행세 방어</h2>
+        <h2>땅 매입, 건물 증축 및 통행세 방어</h2>
         <div class="step-list">
           <div class="step-item">
             <div class="step-num">1</div>
@@ -388,7 +393,7 @@
           <div class="step-item">
             <div class="step-num">4</div>
             <div class="step-body">
-              <h4>🌊 자연재해와 복구비</h4>
+              <h4>자연재해와 복구비</h4>
               <p>나라 칸에 도착하면 <strong>네 번에 한 번꼴로</strong> 자연재해가 일어나 복구비를 냅니다. 재해는 <strong>그 나라의 기후와 지형에서 실제로 일어나는 것만</strong> 나옵니다.<br>
               🌍 지진·🌋 화산(일본·아이슬란드·뉴질랜드·이탈리아 등) · 🌊 홍수(베트남·인도·독일·콩고 등) · 🌀 태풍(필리핀·태국·멕시코 등) · 🏜️ 가뭄과 🌫️ 모래폭풍(이집트·사우디·모로코 등) · 🔥 산불(그리스·캐나다·브라질 등) · ❄️ 폭설과 🏔️ 산사태(스위스·네팔·노르웨이 등) · 🌪️ 토네이도(미국) · 🦗 메뚜기 떼(케냐) · 🪸 산호 백화(호주) · 🌡️ 폭염 · 🌬️ 대서양 폭풍(영국·프랑스) — 모두 14가지입니다.<br>
               복구비는 다른 플레이어가 아니라 <strong>은행으로 사라지는 돈</strong>입니다. 통행세는 친구에게 옮겨 갈 뿐이지만 재해 복구비는 판 전체의 돈을 줄이기 때문에, 게임이 길어질수록 모두의 지갑이 얇아지고 파산 위험이 커집니다. 재해 안내창에는 <strong>왜 그 나라에서 그런 재해가 일어나는지</strong> 교과서 설명이 한 줄씩 붙습니다.</p>
@@ -397,8 +402,9 @@
           <div class="step-item">
             <div class="step-num">5</div>
             <div class="step-body">
-              <h4>💸 현금 부족 시 긴급 토지 매각 시스템</h4>
+              <h4>현금 부족 시 긴급 토지 매각 시스템</h4>
               <p>통행세를 낼 현금이 부족하면 <strong>[토지 매각 모달]</strong>이 열립니다. 내가 가진 다른 땅을 팔아 현금을 마련한 뒤 내고 계속 플레이할 수 있습니다. 다만 <strong>급하게 파는 것이라 원래 값의 60%만 돌려받습니다.</strong> 재해 복구비를 낼 때도 같은 창이 열립니다.</p>
+              <p>실수로 팔지 않도록 <strong>[매각]을 한 번 누르면 [정말 팔기]로 바뀌고, 한 번 더 눌러야</strong> 팔립니다.</p>
             </div>
           </div>
         </div>
@@ -408,7 +414,7 @@
     <!-- 4. 생태쉼터 & 특수칸 -->
     <div id="tab-special" class="tab-pane">
       <div class="guide-card">
-        <h2>🌿 생태 쉼터 보너스 카드 (8종)</h2>
+        <h2>생태 쉼터 보너스 카드 (8종)</h2>
         <p>생태 쉼터 칸에 도착하면 환경 보호에 기여한 보답으로 아래 8장 중 1장의 카드를 무작위로 뽑습니다.</p>
         
         <div class="card-grid">
@@ -445,7 +451,7 @@
               <span class="item-title">출발지로 이동</span>
               <span class="item-tag tag-instant">즉시형</span>
             </div>
-            <p class="item-desc">즉시 출발지 칸으로 날아가며 완주 월급과 도착 보너스를 합쳐 총 ₩100,000을 획득합니다.</p>
+            <p class="item-desc">즉시 출발지 칸으로 날아가고 <strong>월급 ₩70,000</strong>을 받습니다. 남의 비싼 땅을 피하는 데도 쓸 수 있습니다.</p>
           </div>
 
           <div class="item-box">
@@ -486,7 +492,7 @@
         </div>
 
         <div class="tip-box">
-          <strong>🌍 기후 퀴즈 & ⛰️ 지형 퀴즈 특수칸</strong>
+          <strong>기후 퀴즈와 지형 퀴즈 특수칸</strong>
           기후/지형 특수칸에 도착하면 심화 퀴즈가 출제되며, 문제를 맞히면 탐험 장학금 <strong>₩30,000</strong>을 획득합니다.
         </div>
       </div>
@@ -495,7 +501,7 @@
     <!-- 5. 승리 & 파산 규칙 -->
     <div id="tab-win" class="tab-pane">
       <div class="guide-card">
-        <h2>🏆 승리 판정 및 파산 처리 규칙</h2>
+        <h2>승리 판정 및 파산 처리 규칙</h2>
         <div class="step-list">
           <div class="step-item">
             <div class="step-num">1</div>
@@ -508,7 +514,8 @@
             <div class="step-num">2</div>
             <div class="step-body">
               <h4>파산 및 탈락 룰</h4>
-              <p>통행세나 복구비를 낼 돈이 부족하고 더 이상 팔 땅이 없는 플레이어는 파산 처리되어 게임에서 탈락합니다. 파산한 플레이어의 땅과 남은 돈은 통행세를 받아야 할 채권자에게 넘어갑니다. (은행에 낼 돈을 못 내 파산한 경우에는 땅이 다시 빈 땅이 됩니다.)</p>
+              <p>통행세나 복구비를 낼 돈이 부족하고 더 이상 팔 땅이 없으면 파산해 게임에서 물러납니다. 파산한 사람의 땅과 남은 돈은 통행세를 받아야 할 상대에게 넘어갑니다. (은행에 낼 돈을 못 내 파산한 경우에는 땅이 다시 빈 땅이 됩니다.)</p>
+              <p><strong>[파산 선언]도 한 번 더 눌러야</strong> 실제로 처리됩니다. 실수로 눌러 탈락하는 일은 없습니다.</p>
             </div>
           </div>
           <div class="step-item">
@@ -518,6 +525,73 @@
               <p>다인 플레이 중 다른 모든 플레이어가 파산하고 <strong>마지막 1명만 생존한 경우</strong>, 목표 라운드와 상관없이 그 즉시 최후의 생존자가 게임에서 승리합니다.</p>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. 선생님께 -->
+    <div id="tab-teacher" class="tab-pane">
+      <div class="guide-card">
+        <h2>수업에서 쓰실 때</h2>
+        <p>실제로 여러 판을 돌려 재 본 수치를 바탕으로 정리했습니다.</p>
+
+        <div class="step-list">
+          <div class="step-item">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <h4>권장 설정: 4인 · 라운드제 · 10라운드</h4>
+              <p>4인 10라운드가 <strong>약 14분</strong>입니다. 5라운드는 7분으로 땅을 다 사기 전에 끝나고, 15라운드는 21분이라 정리 시간이 빠듯합니다.<br>
+              인원은 4인을 권합니다. 3인 이하는 땅 경쟁이 약해 통행세를 밟는 일이 잘 생기지 않습니다.</p>
+            </div>
+          </div>
+
+          <div class="step-item">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <h4>40분 수업 배분</h4>
+              <p>
+              <strong>0~5분</strong> 규칙 안내(이 페이지) · 이름 입력 · 10라운드 선택<br>
+              <strong>5~20분</strong> 게임 진행 — 종이 치면 <strong>[🏁 게임 끝내기]</strong>로 정리<br>
+              <strong>20~25분</strong> 순위 발표(자동)<br>
+              <strong>25~38분</strong> 오늘 나온 나라의 기후·지형 되짚기 — <strong>게임 중 나온 재해 카드가 좋은 소재입니다</strong>
+              </p>
+            </div>
+          </div>
+
+          <div class="step-item">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <h4>건물은 ‘집’까지만 설명하세요</h4>
+              <p>10라운드 동안 <strong>🏘️ 마을(2단계)에 도달하는 경우는 판당 0.03칸, 🏰 랜드마크(3단계)는 0건</strong>으로 측정됐습니다. 수업 시간 안에는 사실상 나오지 않으니, 규칙 설명에서는 🏠 집까지만 다루시면 충분합니다.</p>
+            </div>
+          </div>
+
+          <div class="step-item">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <h4>퀴즈 해설은 함께 읽어 주세요</h4>
+              <p>정답·오답 뒤에 나오는 <strong>💡 교과서 탐구</strong> 한 줄이 이 게임의 실제 학습 내용입니다. 아이가 확인을 누르기 전에 소리 내어 함께 읽으면 효과가 큽니다. 재해 안내창의 설명도 마찬가지입니다.</p>
+            </div>
+          </div>
+
+          <div class="step-item">
+            <div class="step-num">5</div>
+            <div class="step-body">
+              <h4>이 게임이 다루는 교육과정</h4>
+              <p>
+              <strong>[6사09-01·02]</strong> 지구본과 세계지도에서 위치 표현하기, 대륙과 대양·여러 나라의 위치<br>
+              <strong>[6사10-01]</strong> 세계 여러 지역의 지형 경관과 다양한 생활 모습<br>
+              <strong>[6사10-02]</strong> 세계의 다양한 기후와 기후 환경이 인간 생활에 미치는 영향<br>
+              내용 요소 가운데 <strong>자연재해</strong>와 <strong>기후변화</strong>는 재해 카드로, <strong>개발과 보전의 균형</strong>은 관광 산업 문항으로 다룹니다.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tip-box">
+          <strong>화면 안내</strong>
+          전자칠판(1920×1080)과 크롬북(1366×768), 구형 노트북(1280×720)에서 글자가 잘리지 않도록 맞춰 두었습니다.
+          뒷자리 아이가 잘 안 보인다고 하면 브라우저에서 <strong>Ctrl + +</strong>로 키우셔도 레이아웃이 무너지지 않습니다.
         </div>
       </div>
     </div>

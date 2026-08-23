@@ -3,6 +3,15 @@
 
 const board = document.querySelector('#board');
 const rollButton = document.querySelector('#roll-button');
+const buildButton = document.querySelector('#build-button');
+const learningReport = document.querySelector('#learning-report');
+const reviewModal = document.querySelector('#review-modal');
+const reviewList = document.querySelector('#review-list');
+const reviewSummary = document.querySelector('#review-summary');
+const openReviewBtn = document.querySelector('#open-review');
+const closeReviewBtn = document.querySelector('#close-review');
+const printReviewBtn = document.querySelector('#print-review');
+const buildBtnText = document.querySelector('#build-btn-text');
 const rollBtnText = document.querySelector('#roll-btn-text');
 const diceElements = [document.querySelector('#die-one'), document.querySelector('#die-two')].filter(Boolean);
 const rollSum = document.querySelector('#roll-sum');
@@ -99,11 +108,12 @@ const specialQuizReward = 30000; // 기후/지형 퀴즈 정답 장학금
 const landQuizReward = 5000;     // 나라 칸 퀴즈를 맞혔을 때 주는 탐험 수당
 const WRONG_TOLL_RATE = 1.2;     // 통행세 퀴즈를 틀리면 1.2배
 
-// 통행세 = 땅값 × 건물 단계별 배율. 빈 땅은 가볍게, 건물을 올린 땅은 무섭게.
-const TOLL_RATES = [0.4, 1.5, 2.8, 4.5];
+// 통행세 = 땅값 × 건물 단계별 배율. 빈 땅은 가볍게, 건물을 올린 땅은 조금씩 무겁게.
+// 차례마다 건물을 지을 수 있게 되면서 세 단계가 모두 실제로 쓰이므로 배율을 완만하게 낮췄습니다.
+const TOLL_RATES = [0.4, 0.7, 1.0, 1.3];
 
 // 건물은 단계가 올라갈수록 더 크고 비싼 건물을 짓습니다 (땅값 대비 배율).
-const BUILD_RATES = [0.5, 0.9, 1.5];
+const BUILD_RATES = [0.5, 0.7, 0.9];
 const BUILD_NAMES = ['🏠 집', '🏘️ 마을', '🏰 랜드마크'];
 
 // 급하게 파는 땅은 은행이 제값을 쳐주지 않습니다.
@@ -209,73 +219,73 @@ const spaces = [
   { name: '출발지', symbol: '🚩', type: 'special-start', tag: '시작점', isSpecial: true, cost: 0, photo: null,
     desc: '세계 일주가 시작되고 끝나는 곳입니다. 보드를 한 바퀴 돌아 이곳을 지나갈 때마다 월급 ₩70,000을 받고, 주사위 눈이 딱 맞아 이 칸에 정확히 도착하면 완주 보너스 ₩30,000을 더 받습니다. 모든 탐험가는 여기에서 출발해 아시아, 유럽, 아프리카, 아메리카, 오세아니아를 차례로 여행하게 됩니다.' },
 
-  { name: '한국', symbol: '◒', type: 'accent-blue', tag: '온대기후', cost: 70000, photo: 'images/korea.jpg', code: 'kr', lat: 36.5, lon: 127.8,
+  { name: '한국', symbol: '◒', type: 'accent-blue', tag: '온대기후', continent: '아시아', cost: 70000, photo: 'images/korea.jpg', code: 'kr', lat: 36.5, lon: 127.8,
     desc: '중위도에 자리해 사계절이 뚜렷한 온대 계절풍 기후입니다. 여름에는 남동쪽 바다에서 덥고 습한 계절풍이 불어와 기온이 높고 비가 많이 내리며, 겨울에는 북서쪽 대륙에서 차갑고 건조한 바람이 붑니다. 국토의 70%가 산지여서 뒤에 산을 두고 앞에 하천을 둔 배산임수 자리에 마을을 이루었고, 남쪽의 넓은 평야에서는 벼농사가 발달했습니다. 추운 겨울을 나기 위한 온돌과 김장은 기후에 적응한 대표적인 생활 문화입니다.' },
-  { name: '일본', symbol: '✿', type: 'accent-blue', tag: '화산/온천', cost: 65000, photo: 'images/japan.jpg', code: 'jp', lat: 36.2, lon: 138.3,
+  { name: '일본', symbol: '✿', type: 'accent-blue', tag: '화산/온천', continent: '아시아', cost: 65000, photo: 'images/japan.jpg', code: 'jp', lat: 36.2, lon: 138.3,
     desc: '네 개의 큰 섬과 수천 개의 작은 섬으로 이루어진 섬나라로, 여러 판이 부딪치는 경계에 놓여 있습니다. 그래서 화산과 지진이 매우 잦고, 후지산 같은 원뿔 모양 화산과 곳곳의 온천이 만들어졌습니다. 지진에 대비해 흔들림을 견디는 건물을 짓고 학교에서 대피 훈련을 자주 합니다. 사방이 바다라 신선한 해산물을 쉽게 구할 수 있어 초밥과 회 같은 음식 문화가 발달했습니다.' },
-  { name: '베트남', symbol: '✦', type: 'accent-blue', tag: '열대기후', cost: 50000, photo: 'images/vietnam.jpg', code: 'vn', lat: 16.0, lon: 107.0,
-    desc: '남북으로 길게 뻗은 나라로, 고온 다습한 열대 계절풍 기후가 나타나 우기와 건기가 뚜렷합니다. 남부의 메콩강 하구에는 강물이 실어 온 흙이 쌓여 만들어진 넓고 비옥한 삼각주가 펼쳐집니다. 일 년 내내 기온이 높아 같은 땅에서 벼를 두세 번 심고 거두는 2기작과 3기작이 이루어집니다. 강한 햇빛과 소나기를 함께 막아 주는 원뿔 모양 모자 논라를 쓰고, 물가에는 수상 가옥을 지어 살아갑니다.' },
-  { name: '태국', symbol: '◆', type: 'accent-blue', tag: '열대/하천', cost: 55000, photo: 'images/thailand.jpg', code: 'th', lat: 15.0, lon: 101.0,
+  { name: '베트남', symbol: '✦', type: 'accent-blue', tag: '열대기후', continent: '아시아', cost: 50000, photo: 'images/vietnam.jpg', code: 'vn', lat: 16.0, lon: 107.0,
+    desc: '남북으로 길게 뻗은 나라로, 고온 다습한 열대 계절풍 기후가 나타나 우기와 건기가 뚜렷합니다. 남부의 메콩강 하구에는 강물이 실어 온 흙이 쌓여 만들어진 넓고 비옥한 삼각주가 펼쳐집니다. 일 년 내내 기온이 높아 같은 땅에서 벼를 두세 번 심고 거두는 2기작과 3기작이 이루어집니다. 강한 햇빛과 소나기를 함께 막아 주는 원뿔 모양 모자 논라를 쓰고, 물가에는 수상 가옥을 지어 살아갑니다. 오늘날에는 호찌민과 하노이 같은 큰 도시에 공장과 회사가 모여 있고, 이곳에서 만든 전자 제품과 옷이 세계로 팔려 나갑니다.' },
+  { name: '태국', symbol: '◆', type: 'accent-blue', tag: '열대/하천', continent: '아시아', cost: 55000, photo: 'images/thailand.jpg', code: 'th', lat: 15.0, lon: 101.0,
     desc: '일 년 내내 덥고 비가 많은 열대 기후로, 망고와 두리안 같은 열대 과일이 잘 자랍니다. 수도 방콕을 흐르는 짜오프라야강과 여기서 갈라진 수많은 운하가 사람과 물건을 실어 나르는 길이 되어, 배 위에서 물건을 사고파는 수상 시장 문화가 자리 잡았습니다. 우기에 비가 집중되면 하천이 넘쳐 홍수가 잦기 때문에 바닥을 땅에서 띄운 고상 가옥을 짓습니다. 국민 대부분이 불교를 믿어 황금빛 사원이 많고 중요한 관광 자원이 되었습니다.' },
-  { name: '필리핀', symbol: '◇', type: 'accent-blue', tag: '해안/환경', cost: 45000, photo: 'images/philippines.jpg', code: 'ph', lat: 12.9, lon: 122.0,
+  { name: '필리핀', symbol: '◇', type: 'accent-blue', tag: '해안/환경', continent: '아시아', cost: 45000, photo: 'images/philippines.jpg', code: 'ph', lat: 12.9, lon: 122.0,
     desc: '7,000개가 넘는 섬으로 이루어진 섬나라로, 바다의 영향을 받아 일 년 내내 덥고 기온 차가 작습니다. 얕고 따뜻한 바다에는 산호초가 발달해 수많은 바다 생물의 보금자리가 되고 파도를 막아 줍니다. 보라카이섬은 아름다운 백사장으로 유명하지만 지나친 관광 개발과 쓰레기 오염 때문에 섬을 일시적으로 닫고 정화 작업을 했습니다. 태풍이 지나는 길목에 있어 해마다 강한 바람과 폭우 피해에 대비합니다.' },
-  { name: '인도네시아', symbol: '●', type: 'accent-blue', tag: '열대우림', cost: 50000, photo: 'images/indonesia.jpg', code: 'id', lat: -2.2, lon: 117.9,
+  { name: '인도네시아', symbol: '●', type: 'accent-blue', tag: '열대우림', continent: '아시아', cost: 50000, photo: 'images/indonesia.jpg', code: 'id', lat: -2.2, lon: 117.9,
     desc: '적도가 나라를 가로질러 일 년 내내 덥고 비가 많은 열대 우림 기후가 나타나며, 오후마다 스콜이라는 짧고 강한 소나기가 쏟아집니다. 땅에서 올라오는 열기와 습기, 뱀과 해충을 피하려고 기둥을 세워 바닥을 높인 고상 가옥을 짓고, 지붕은 비가 잘 흘러내리도록 경사를 급하게 만듭니다. 여러 판이 만나는 불의 고리에 속해 화산이 많은데, 화산재가 쌓인 땅은 농사에 유리하기도 합니다. 다만 농장 개발과 벌목으로 열대 우림이 빠르게 줄어드는 문제를 안고 있습니다.' },
-  { name: '인도', symbol: '↗', type: 'accent-blue', tag: '계절풍/하천', cost: 60000, photo: 'images/india.jpg', code: 'in', lat: 21.0, lon: 78.0,
-    desc: '계절에 따라 방향이 바뀌는 계절풍의 영향을 크게 받아, 여름 계절풍이 바다에서 습기를 몰고 와 많은 비를 뿌립니다. 히말라야의 눈과 빙하가 녹은 물이 큰 하천을 이루어 북부에 넓고 비옥한 평야를 만들었습니다. 그중 갠지스강은 농사와 생활에 물을 대 줄 뿐 아니라 힌두교도들이 성스럽게 여겨 목욕 의식을 치르는 강입니다. 더운 기후에서 음식이 상하는 것을 늦추려고 향신료를 많이 쓰고, 통풍이 잘되는 긴 천을 몸에 둘러 입는 사리를 입습니다.' },
+  { name: '인도', symbol: '↗', type: 'accent-blue', tag: '계절풍/하천', continent: '아시아', cost: 60000, photo: 'images/india.jpg', code: 'in', lat: 21.0, lon: 78.0,
+    desc: '계절에 따라 방향이 바뀌는 계절풍의 영향을 크게 받아, 여름 계절풍이 바다에서 습기를 몰고 와 많은 비를 뿌립니다. 히말라야의 눈과 빙하가 녹은 물이 큰 하천을 이루어 북부에 넓고 비옥한 평야를 만들었습니다. 그중 갠지스강은 농사와 생활에 물을 대 줄 뿐 아니라 힌두교도들이 성스럽게 여겨 목욕 의식을 치르는 강입니다. 더운 기후에서 음식이 상하는 것을 늦추려고 향신료를 많이 쓰고, 통풍이 잘되는 긴 천을 몸에 둘러 입는 사리를 입습니다. 오늘날 벵갈루루를 중심으로 소프트웨어와 정보 기술 산업이 크게 발달해, 세계 여러 나라의 프로그램을 만들어 내고 있습니다.' },
 
   { name: '기후 퀴즈', symbol: '🌍', type: 'special-climate', tag: '기후탐험', isSpecial: true, cost: 0, photo: null,
     desc: '세계의 기후를 탐구하는 특수칸입니다. 열대, 건조, 온대, 냉대, 한대, 고산 기후의 특징과 그 속에서 살아가는 사람들의 의식주 생활에 대한 문제가 나옵니다. 문제를 맞히면 탐험 장학금 ₩30,000을 받습니다. 위도와 해발 고도, 바다와의 거리가 기후를 어떻게 바꾸는지 떠올리며 풀어 보세요.' },
 
-  { name: '이탈리아', symbol: '●', type: 'accent-yellow', tag: '지중해성', cost: 65000, photo: 'images/italy.jpg', code: 'it', lat: 42.8, lon: 12.6,
+  { name: '이탈리아', symbol: '●', type: 'accent-yellow', tag: '지중해성', continent: '유럽', cost: 65000, photo: 'images/italy.jpg', code: 'it', lat: 42.8, lon: 12.6,
     desc: '지중해로 길게 뻗은 장화 모양의 반도 나라로, 여름에는 덥고 건조하며 겨울에 비가 내리는 지중해성 기후입니다. 여름 가뭄을 견디도록 잎이 작고 두꺼운 올리브와 포도, 오렌지를 기르는 수목 농업이 발달했습니다. 밀과 올리브유, 토마토가 풍부해 파스타와 피자 같은 음식 문화가 만들어져 세계로 퍼졌습니다. 로마의 콜로세움을 비롯한 유적과 물 위의 도시 베네치아는 오늘날 중요한 관광 자원입니다.' },
-  { name: '그리스', symbol: '△', type: 'accent-yellow', tag: '지중해섬', cost: 60000, photo: 'images/greece.jpg', code: 'gr', lat: 39.1, lon: 22.0,
+  { name: '그리스', symbol: '△', type: 'accent-yellow', tag: '지중해섬', continent: '유럽', cost: 60000, photo: 'images/greece.jpg', code: 'gr', lat: 39.1, lon: 22.0,
     desc: '에게해에 수많은 섬이 흩어져 있어 예로부터 배가 오가며 해상 무역과 해운업이 발달했습니다. 지중해성 기후라 여름이 덥고 건조한데, 강한 햇빛과 열기를 반사해 실내를 시원하게 하려고 집 외벽을 하얗게 칠합니다. 산이 많고 평야가 좁아 곡물 농사 대신 올리브를 길러 기름을 짜서 요리에 두루 씁니다. 아테네의 파르테논 신전 같은 고대 유적과 맑고 건조한 여름 날씨가 함께 어우러져 관광객이 많이 찾습니다.' },
-  { name: '프랑스', symbol: '✦', type: 'accent-yellow', tag: '서안해양성', cost: 75000, photo: 'images/france.jpg', code: 'fr', lat: 46.6, lon: 2.4,
+  { name: '프랑스', symbol: '✦', type: 'accent-yellow', tag: '서안해양성', continent: '유럽', cost: 75000, photo: 'images/france.jpg', code: 'fr', lat: 46.6, lon: 2.4,
     desc: '서쪽에서 부는 편서풍이 따뜻한 북대서양 해류 위를 지나며 열과 습기를 실어 와, 여름은 서늘하고 겨울은 온화하며 비가 고르게 내리는 서안 해양성 기후가 나타납니다. 파리 분지의 넓고 평평한 평야에서는 유럽 최대 규모로 밀을 생산합니다. 남부는 지중해의 영향을 받아 포도가 잘 자라며 이를 이용한 포도주 생산이 지역의 대표 산업이 되었습니다. 알프스산맥과 에펠탑, 루브르 박물관 등 자연과 문화 자원이 풍부해 세계에서 관광객이 가장 많이 찾는 나라 가운데 하나입니다.' },
-  { name: '영국', symbol: '◇', type: 'accent-yellow', tag: '서안해양성', cost: 70000, photo: 'images/uk.jpg', code: 'gb', lat: 54.0, lon: -2.4,
+  { name: '영국', symbol: '◇', type: 'accent-yellow', tag: '서안해양성', continent: '유럽', cost: 70000, photo: 'images/uk.jpg', code: 'gb', lat: 54.0, lon: -2.4,
     desc: '섬나라이면서 편서풍과 따뜻한 해류의 영향을 받아, 위도가 높은데도 겨울이 우리나라보다 온화합니다. 바다의 습기 때문에 안개가 끼고 보슬비가 자주 내려 우산과 방수 코트가 일상 필수품이 되었고, 흐리고 서늘한 날씨 속에서 오후에 차를 마시는 문화가 자리 잡았습니다. 비가 계절에 관계없이 고르게 내려 풀이 마르지 않으므로 목초지와 낙농업이 발달했습니다. 석탄과 철이 풍부하고 항구가 발달한 조건을 바탕으로 세계 최초로 산업 혁명이 일어난 곳이기도 합니다.' },
-  { name: '독일', symbol: '♢', type: 'accent-yellow', tag: '하천교통', cost: 65000, photo: 'images/germany.jpg', code: 'de', lat: 51.1, lon: 10.4,
+  { name: '독일', symbol: '♢', type: 'accent-yellow', tag: '하천교통', continent: '유럽', cost: 65000, photo: 'images/germany.jpg', code: 'de', lat: 51.1, lon: 10.4,
     desc: '유럽 한가운데에 자리해 여러 나라와 국경을 맞대고 있어 도로와 철도, 하천이 모이는 교통의 요지입니다. 나라를 가로지르는 라인강은 여러 나라를 거쳐 흐르는 국제 하천으로, 화물선이 오가는 수상 교통의 대동맥 역할을 합니다. 석탄이 풍부하고 라인강 수운을 쓸 수 있는 루르 지역에는 제철과 기계 공업이 크게 발달했고, 그 전통 위에서 세계적인 자동차 산업이 자랐습니다. 남서부에는 침엽수가 우거진 흑림이 넓게 펼쳐져 목재와 관광 자원이 됩니다.' },
-  { name: '노르웨이', symbol: '▣', type: 'accent-yellow', tag: '피오르', cost: 65000, photo: 'images/norway.jpg', code: 'no', lat: 61.5, lon: 9.0,
+  { name: '노르웨이', symbol: '▣', type: 'accent-yellow', tag: '피오르', continent: '유럽', cost: 65000, photo: 'images/norway.jpg', code: 'no', lat: 61.5, lon: 9.0,
     desc: '과거 빙하가 깎아 만든 깊은 U자 골짜기에 바닷물이 차오르면서 절벽이 솟은 피오르 해안이 발달했습니다. 하천이 만드는 V자곡과 달리 빙하는 바닥을 넓게 갈아 U자 모양 골짜기를 남깁니다. 파도가 잔잔하고 물이 차가운 피오르는 연어를 기르기에 알맞아 세계적인 연어 수출국이 되었습니다. 산이 높고 비와 눈이 많아 전기의 대부분을 수력 발전으로 얻으며, 북극권에서는 여름에 해가 지지 않는 백야와 겨울밤의 오로라를 볼 수 있습니다.' },
-  { name: '아이슬란드', symbol: '☕', type: 'accent-yellow', tag: '화산/지열', cost: 60000, photo: 'images/iceland.jpg', code: 'is', lat: 64.9, lon: -18.6,
+  { name: '아이슬란드', symbol: '☕', type: 'accent-yellow', tag: '화산/지열', continent: '유럽', cost: 60000, photo: 'images/iceland.jpg', code: 'is', lat: 64.9, lon: -18.6,
     desc: '대서양 한가운데 판이 서로 갈라지는 경계 위에 있어 마그마가 솟아오르며 화산과 온천이 발달한, 불과 얼음의 나라입니다. 땅속에서 데워진 지하수가 압력을 받아 주기적으로 솟구치는 간헐천이 대표적인 관광 자원입니다. 석유나 석탄을 태우는 대신 땅속 열을 그대로 쓰는 지열 발전으로 난방을 해결하고, 그 열로 온실을 데워 추운 곳에서도 채소를 기릅니다. 빙하 아래에서 화산이 터지면 얼음이 빠르게 녹아 큰 홍수가 나기도 합니다.' },
 
   { name: '지형 퀴즈', symbol: '⛰️', type: 'special-landform', tag: '지형탐험', isSpecial: true, cost: 0, photo: null,
     desc: '지구의 다양한 지형을 탐구하는 특수칸입니다. 산지와 하천, 해안, 화산, 빙하가 만들어 낸 지형과 그것을 이용하는 사람들의 생활에 대한 문제가 나옵니다. 문제를 맞히면 탐험 장학금 ₩30,000을 받습니다. 삼각주, 피오르, 갯벌, 협곡처럼 무엇이 어떻게 깎고 쌓아 만든 지형인지 생각하며 풀어 보세요.' },
 
-  { name: '스위스', symbol: '△', type: 'accent-yellow', tag: '알프스', cost: 70000, photo: 'images/switzerland.jpg', code: 'ch', lat: 46.8, lon: 8.2,
+  { name: '스위스', symbol: '△', type: 'accent-yellow', tag: '알프스', continent: '유럽', cost: 70000, photo: 'images/switzerland.jpg', code: 'ch', lat: 46.8, lon: 8.2,
     desc: '바다와 맞닿은 곳이 전혀 없는 내륙국이면서 국토 대부분이 험준한 알프스 산지입니다. 해발 고도가 100m 높아질 때마다 기온이 약 0.6도씩 낮아지므로 같은 지역이라도 산 위와 아래의 기후가 다릅니다. 경사진 땅은 밭농사에 불리하지만 풀은 잘 자라, 여름에 높은 초원에서 소를 기르고 우유로 치즈를 만드는 낙농업이 발달했습니다. 톱니바퀴 산악 열차와 케이블카로 험한 지형을 극복해 겨울에는 스키, 여름에는 등산 관광이 일 년 내내 이어집니다.' },
-  { name: '이집트', symbol: '◌', type: 'accent-mint', tag: '건조/사막', cost: 55000, photo: 'images/egypt.jpg', code: 'eg', lat: 26.8, lon: 29.9,
+  { name: '이집트', symbol: '◌', type: 'accent-mint', tag: '건조/사막', continent: '아프리카', cost: 55000, photo: 'images/egypt.jpg', code: 'eg', lat: 26.8, lon: 29.9,
     desc: '국토 대부분이 사막인 건조 기후 지역이지만, 사막 한가운데를 흐르는 나일강이 물과 비옥한 흙을 가져다주어 문명이 자랐습니다. 강물을 끌어와 농경지에 대는 관개 농업 덕분에 비가 거의 오지 않는 땅에서도 농사를 지을 수 있습니다. 구름과 수증기가 적어 낮에는 몹시 덥고 밤에는 갑자기 추워지므로, 흙벽돌로 벽을 두껍게 쌓고 창문을 작게 내어 열기와 모래바람을 막습니다. 나일강 유역의 피라미드는 고대 문명을 보여 주는 유산이자 중요한 관광 자원입니다.' },
-  { name: '사우디', symbol: '≈', type: 'accent-blue', tag: '오아시스', cost: 60000, photo: 'images/saudi.jpg', code: 'sa', lat: 24.0, lon: 45.0,
+  { name: '사우디', symbol: '≈', type: 'accent-blue', tag: '오아시스', continent: '아시아', cost: 60000, photo: 'images/saudi.jpg', code: 'sa', lat: 24.0, lon: 45.0,
     desc: '내리는 비보다 증발하는 물이 더 많은 건조 기후로, 국토 대부분이 모래와 자갈로 덮인 사막입니다. 사막 가운데 지하수가 솟아나는 오아시스 주변에서는 대추야자와 밀을 기르는 오아시스 농업이 이루어지고 사람들이 모여 마을을 이룹니다. 대추야자는 뿌리를 깊이 뻗어 지하수를 빨아들이고 강한 햇빛을 잘 견뎌 이곳에서 기르기에 알맞습니다. 물과 풀을 찾아 가축을 몰고 옮겨 다니는 유목 생활이 이어져 왔고, 사막 아래 묻힌 석유가 개발되면서 나라의 모습이 크게 바뀌었습니다.' },
-  { name: '케냐', symbol: '✦', type: 'accent-mint', tag: '사바나', cost: 50000, photo: 'images/kenya.jpg', code: 'ke', lat: 0.5, lon: 37.9,
-    desc: '적도 부근에 있지만 국토의 상당 부분이 높은 고원이라 수도 나이로비처럼 연중 서늘한 곳이 많습니다. 비가 집중되는 우기와 비가 거의 오지 않는 건기가 뚜렷한 열대 사바나 기후로, 키 큰 풀 사이에 나무가 드문드문 서 있는 초원이 펼쳐집니다. 초식동물과 맹수가 함께 살아가 국립공원을 둘러보며 야생동물을 관찰하는 사파리 생태 관광이 활발합니다. 서늘하고 물이 잘 빠지는 고원에서는 커피와 차를 길러 세계로 수출합니다.' },
-  { name: '콩고(민)', symbol: '◆', type: 'accent-mint', tag: '콩고강', cost: 45000, photo: 'images/congo.jpg', code: 'cd', lat: -2.9, lon: 23.6,
-    desc: '적도가 지나 일 년 내내 덥고 비가 많아, 세계에서 두 번째로 넓은 열대 우림이 펼쳐집니다. 나무들이 이산화 탄소를 빨아들이고 산소를 내보내 지구의 허파라 불리며, 숲을 지키는 일은 기후 변화를 늦추는 데 도움이 됩니다. 경사가 급한 곳에서 물살이 빨라진 콩고강 급류의 바위틈에는 주민들이 거대한 나무 구조물과 대나무 원뿔형 통발을 설치해 물고기를 잡는 전통 어업이 이어집니다. 덥고 습한 기후에서 잘 자라고 척박한 땅도 견디는 카사바가 중요한 식량입니다.' },
-  { name: '모로코', symbol: '☾', type: 'accent-mint', tag: '사하라', cost: 50000, photo: 'images/morocco.jpg', code: 'ma', lat: 31.8, lon: -6.5,
+  { name: '케냐', symbol: '✦', type: 'accent-mint', tag: '사바나', continent: '아프리카', cost: 50000, photo: 'images/kenya.jpg', code: 'ke', lat: 0.5, lon: 37.9,
+    desc: '적도 부근에 있지만 국토의 상당 부분이 높은 고원이라 수도 나이로비처럼 연중 서늘한 곳이 많습니다. 비가 집중되는 우기와 비가 거의 오지 않는 건기가 뚜렷한 열대 사바나 기후로, 키 큰 풀 사이에 나무가 드문드문 서 있는 초원이 펼쳐집니다. 초식동물과 맹수가 함께 살아가 국립공원을 둘러보며 야생동물을 관찰하는 사파리 생태 관광이 활발합니다. 서늘하고 물이 잘 빠지는 고원에서는 커피와 차를 길러 세계로 수출합니다. 나이로비에는 고층 건물이 늘어선 도심과 여러 나라의 회사·국제기구가 모여 있어, 동아프리카의 중심 도시 역할을 합니다.' },
+  { name: '콩고(민)', symbol: '◆', type: 'accent-mint', tag: '콩고강', continent: '아프리카', cost: 45000, photo: 'images/congo.jpg', code: 'cd', lat: -2.9, lon: 23.6,
+    desc: '적도가 지나 일 년 내내 덥고 비가 많아, 세계에서 두 번째로 넓은 열대 우림이 펼쳐집니다. 나무들이 이산화 탄소를 빨아들이고 산소를 내보내 지구의 허파라 불리며, 숲을 지키는 일은 기후 변화를 늦추는 데 도움이 됩니다. 경사가 급한 곳에서 물살이 빨라진 콩고강 급류의 바위틈에는 주민들이 거대한 나무 구조물과 대나무 원뿔형 통발을 설치해 물고기를 잡는 전통 어업이 이어집니다. 덥고 습한 기후에서 잘 자라고 척박한 땅도 견디는 카사바가 중요한 식량입니다. 콩고강 가에 자리한 수도 킨샤사는 인구 1,000만 명이 넘는 아프리카 최대급 도시로, 많은 사람이 도시에서 일하며 살아갑니다.' },
+  { name: '모로코', symbol: '☾', type: 'accent-mint', tag: '사하라', continent: '아프리카', cost: 50000, photo: 'images/morocco.jpg', code: 'ma', lat: 31.8, lon: -6.5,
     desc: '북쪽 해안은 겨울에 비가 내리는 지중해성 기후라 올리브와 밀을 기를 수 있지만, 아틀라스산맥 남쪽은 세계에서 가장 넓은 사하라 사막이 시작되는 매우 건조한 땅입니다. 한 나라 안에서도 산맥을 경계로 기후와 농사 모습이 크게 달라집니다. 강한 자외선과 모래바람을 막고 땀이 잘 증발하도록 온몸을 헐렁하게 감싸는 긴 전통 옷 젤라바를 입습니다. 옛날에는 낙타를 이끈 대상이 오아시스를 따라 사막을 건너며 소금과 금을 실어 날랐고, 그 길목에 시장과 도시가 자랐습니다.' },
-  { name: '네팔', symbol: '♧', type: 'accent-blue', tag: '히말라야', cost: 55000, photo: 'images/nepal.jpg', code: 'np', lat: 28.3, lon: 84.1,
+  { name: '네팔', symbol: '♧', type: 'accent-blue', tag: '히말라야', continent: '아시아', cost: 55000, photo: 'images/nepal.jpg', code: 'np', lat: 28.3, lon: 84.1,
     desc: '인도판이 유라시아판과 부딪쳐 밀어 올린 히말라야산맥이 나라 북쪽을 가로지르며, 세계 최고봉 에베레스트산이 자리합니다. 산맥은 지금도 조금씩 높아지고 있습니다. 고도가 높아질수록 공기가 희박해지고 기온이 낮아지는데, 이곳에 사는 셰르파는 그 환경에 적응해 등산객의 짐을 나르고 길을 안내합니다. 산비탈을 계단처럼 깎아 만든 계단식 경작지는 빗물에 흙이 쓸려 내려가는 것을 막고 물을 가두어 농사를 가능하게 합니다.' },
 
   { name: '생태 쉼터', symbol: '🌿', type: 'special-eco', tag: '보너스카드', isSpecial: true, cost: 0, photo: null,
     desc: '지구촌 환경을 지키는 쉼터입니다. 이 칸에 도착하면 보너스 카드를 한 장 뽑습니다. 통행세를 한 번 내지 않아도 되는 면제권, 건물을 공짜로 짓는 무료 증축권, 땅을 절반 값에 사는 반값 매입권, 출발지로 이동, 원하는 나라로 날아가는 여행권, 환경 장학금, 한 번 더 굴리기, 가진 땅마다 지원금을 받는 숲 보호 보너스까지 여덟 가지가 들어 있습니다.' },
 
-  { name: '브라질', symbol: '●', type: 'accent-pink', tag: '아마존강', cost: 65000, photo: 'images/brazil.jpg', code: 'br', lat: -10.3, lon: -53.1,
+  { name: '브라질', symbol: '●', type: 'accent-pink', tag: '아마존강', continent: '아메리카', cost: 65000, photo: 'images/brazil.jpg', code: 'br', lat: -10.3, lon: -53.1,
     desc: '흐르는 물의 양이 세계에서 가장 많은 아마존강이 흐르며, 그 주변에 지구에서 가장 넓은 열대 우림이 펼쳐집니다. 이 숲은 이산화 탄소를 흡수하고 산소를 내보내 지구 전체의 공기와 기후에 큰 영향을 주지만, 목장과 농장을 넓히려는 개발로 빠르게 줄어들고 있습니다. 아르헨티나와의 국경에는 하천이 만들어 낸 웅장한 이구아수 폭포가 있어 세계자연유산으로 지정되었습니다. 남동부의 서늘한 고원에서는 커피가 잘 자라 세계 최대의 커피 생산국이 되었습니다.' },
-  { name: '페루', symbol: '◆', type: 'accent-pink', tag: '안데스', cost: 55000, photo: 'images/peru.jpg', code: 'pe', lat: -9.8, lon: -75.5,
+  { name: '페루', symbol: '◆', type: 'accent-pink', tag: '안데스', continent: '아메리카', cost: 55000, photo: 'images/peru.jpg', code: 'pe', lat: -9.8, lon: -75.5,
     desc: '남아메리카 서쪽을 남북으로 약 7,000km 뻗은 안데스산맥이 사람들의 생활을 좌우합니다. 적도에 가까운 저위도인데도 해발 고도가 높아 일 년 내내 봄 같은 고산 기후가 나타나며, 그런 곳에 큰 도시가 자리하기도 합니다. 춥고 일교차가 큰 날씨를 견디려고 알파카와 라마의 털로 짠 두꺼운 망토 판초를 입고, 이 가축들에게 짐을 나르게 합니다. 서늘한 고산 지대에서 처음 재배되어 세계로 퍼진 감자의 원산지이며, 산등성이에 세운 잉카의 도시 마추픽추가 남아 있습니다.' },
-  { name: '멕시코', symbol: '✦', type: 'accent-pink', tag: '열대/고산', cost: 50000, photo: 'images/mexico.jpg', code: 'mx', lat: 23.6, lon: -102.5,
+  { name: '멕시코', symbol: '✦', type: 'accent-pink', tag: '열대/고산', continent: '아메리카', cost: 50000, photo: 'images/mexico.jpg', code: 'mx', lat: 23.6, lon: -102.5,
     desc: '북부는 비가 적은 건조 지역이라 잎을 가시로 바꾸고 두꺼운 줄기에 물을 저장하는 선인장이 자랍니다. 수도 멕시코시티는 해발 2,000m가 넘는 고원에 있어 저위도인데도 서늘하고 살기 좋습니다. 가뭄에 강한 옥수수는 고대 문명 때부터 길러 온 주식으로, 옥수숫가루를 얇게 펴서 구운 토르티야는 밥과 같은 역할을 합니다. 옥수수 농사를 바탕으로 큰 도시와 신전을 세운 마야와 아스텍 문명의 피라미드가 오늘날까지 남아 있고, 강한 햇빛을 막는 챙 넓은 모자 솜브레로가 유명합니다.' },
-  { name: '미국', symbol: '△', type: 'accent-pink', tag: '평야/농업', cost: 80000, photo: 'images/usa.jpg', code: 'us', lat: 39.5, lon: -98.4,
+  { name: '미국', symbol: '△', type: 'accent-pink', tag: '평야/농업', continent: '아메리카', cost: 80000, photo: 'images/usa.jpg', code: 'us', lat: 39.5, lon: -98.4,
     desc: '국토가 매우 넓어 위도와 고도, 바다와의 거리에 따라 열대부터 한대까지 다양한 기후가 나타납니다. 중앙부에는 넓고 평평한 대평원이 펼쳐져 세계적인 곡창 지대가 되었고, 큰 농기계와 비행기를 이용해 적은 사람으로 아주 넓은 면적을 짓는 기업적 농업이 발달했습니다. 여러 지류를 모아 흐르는 미시시피강은 내륙 수운의 중심이 되어 대평원의 곡물을 항구까지 실어 나릅니다. 콜로라도강이 오랜 세월 땅을 깎아 만든 그랜드 캐니언은 하천 침식이 만든 대표적인 지형입니다.' },
-  { name: '캐나다', symbol: '◇', type: 'accent-pink', tag: '냉대침엽', cost: 70000, photo: 'images/canada.jpg', code: 'ca', lat: 56.1, lon: -106.3,
+  { name: '캐나다', symbol: '◇', type: 'accent-pink', tag: '냉대침엽', continent: '아메리카', cost: 70000, photo: 'images/canada.jpg', code: 'ca', lat: 56.1, lon: -106.3,
     desc: '위도가 높아 겨울이 춥고 길며 눈이 오래 쌓여 있는 냉대 기후가 넓게 나타납니다. 잎이 좁고 뾰족해 수분 손실이 적고 눈이 잘 미끄러지는 침엽수가 잘 자라 타이가라 불리는 거대한 숲을 이룹니다. 이 목재는 단단하고 질이 좋아 통나무집 건축과 가구, 종이 펄프를 만드는 임업이 크게 발달했습니다. 서부의 로키산맥에는 만년설과 빙하가 녹아 만든 호수가 있어 손꼽히는 자연 관광지가 되었고, 단풍나무 수액을 졸여 만든 메이플 시럽이 특산물입니다.' },
-  { name: '호주', symbol: '♧', type: 'accent-blue', tag: '산호초', cost: 70000, photo: 'images/australia.jpg', code: 'au', lat: -25.3, lon: 133.4,
+  { name: '호주', symbol: '♧', type: 'accent-blue', tag: '산호초', continent: '오세아니아', cost: 70000, photo: 'images/australia.jpg', code: 'au', lat: -25.3, lon: 133.4,
     desc: '남반구에 있어 북반구와 계절이 반대라 한여름에 크리스마스를 맞이합니다. 내륙에는 비가 매우 적어 붉은 흙과 관목만 보이는 아웃백이 넓게 펼쳐지고, 그 한가운데 오랜 풍화와 침식을 견디고 남은 거대한 바위 울루루가 솟아 있습니다. 건조한 초원은 풀을 뜯는 양을 기르기에 알맞아 세계적인 양모 생산국이 되었습니다. 북동부 해안의 그레이트 배리어 리프는 세계 최대의 산호초 지대이며, 오랫동안 다른 대륙과 떨어져 있어 캥거루와 코알라 같은 고유한 동물이 살아남았습니다.' },
-  { name: '뉴질랜드', symbol: '▤', type: 'accent-blue', tag: '빙하/화산', cost: 65000, photo: 'images/newzealand.jpg', code: 'nz', lat: -41.3, lon: 172.8,
+  { name: '뉴질랜드', symbol: '▤', type: 'accent-blue', tag: '빙하/화산', continent: '오세아니아', cost: 65000, photo: 'images/newzealand.jpg', code: 'nz', lat: -41.3, lon: 172.8,
     desc: '태평양판과 인도-오스트레일리아판이 만나는 경계에 있어 화산과 지진 활동이 활발합니다. 북섬의 로토루아 일대에서는 땅속에서 데워진 물이 주기적으로 솟구치는 간헐천과 머드 풀을 볼 수 있습니다. 남섬 남서부에는 빙하가 파낸 깊은 골짜기에 바닷물이 들어와 절벽이 솟은 피오르가 발달해 있습니다. 바다의 영향과 편서풍 덕분에 연중 온화하고 비가 고르게 내려 풀이 잘 자라므로 양과 소를 기르는 목축업과 유제품 산업이 발달했으며, 원주민 마오리족이 고유한 언어와 문화를 이어 오고 있습니다.' }
 ];
 
@@ -804,13 +814,15 @@ function openChoiceModal({ eyebrow, icon, title, desc, descHtml, buttons = [], c
   if (descHtml) cardDesc.innerHTML = descHtml; else cardDesc.textContent = desc || '';
 
   cardChoices.innerHTML = '';
+  cardChoices.classList.remove('build-choices');
   cardChoices.classList.toggle('hidden', !choices);
   if (choices) {
     choices.forEach(ch => {
       const btn = document.createElement('button');
       btn.className = 'card-choice-btn';
       btn.innerHTML = `<strong>${ch.label}</strong><span>${ch.sub || ''}</span>`;
-      btn.addEventListener('click', () => { closeChoiceModal(); ch.onClick(); });
+      if (ch.disabled) btn.disabled = true;
+      else btn.addEventListener('click', () => { closeChoiceModal(); ch.onClick(); });
       cardChoices.appendChild(btn);
     });
   }
@@ -877,7 +889,7 @@ function updatePlayerRow(index) {
   }
 }
 
-function updateAllRows() { gamePlayers.forEach((_, i) => updatePlayerRow(i)); }
+function updateAllRows() { gamePlayers.forEach((_, i) => updatePlayerRow(i)); updateBuildButton(); }
 
 function updatePropertyTile(spaceIndex) {
   const state = propertyState[spaceIndex];
@@ -932,6 +944,7 @@ function updateCurrentTurnUI() {
   }
 
   playerCards.forEach((card, index) => card.classList.toggle('active', index === currentPlayerIndex));
+  updateBuildButton();
 
   if (current.isAI && !isGameFinished && !isMoving) {
     setTimeout(() => {
@@ -945,12 +958,121 @@ function addActivityLog(text) {
 }
 
 function closeAllPlayModals() {
+  clearReadDelay();
   quizModal.classList.add('hidden');
   sellModal.classList.add('hidden');
   cardModal.classList.add('hidden');
   infoModal.classList.add('hidden');
   aiQuizBanner.classList.add('hidden');
 }
+
+// ============================================================
+// 사회과 탐험 리포트 — 자산 순위 옆에 붙는 학습 결과
+// ============================================================
+
+// 가장 많이 다닌 대륙을 찾습니다.
+function topContinent(player) {
+  const visited = (player.quizStats && player.quizStats.visitedContinents) || {};
+  let best = null;
+  let bestCount = 0;
+  Object.keys(visited).forEach((key) => {
+    if (visited[key] > bestCount) { bestCount = visited[key]; best = key; }
+  });
+  return best ? { name: best, count: bestCount } : null;
+}
+
+// 모든 아이가 적어도 하나는 받도록 설계한 칭찬 뱃지입니다.
+function badgesFor(player, context) {
+  const st = player.quizStats || { totalAttempts: 0, correctCount: 0, climateCorrect: 0, ecoCards: 0, wrongQuizzes: [], visitedContinents: {} };
+  const rate = st.totalAttempts ? st.correctCount / st.totalAttempts : 0;
+  const list = [];
+
+  if (st.totalAttempts >= 3 && rate >= 0.8) list.push({ icon: '🎓', name: '지리 척척박사', why: `정답률 ${Math.round(rate * 100)}%` });
+  if (st.ecoCards >= 1 || st.climateCorrect >= 2) list.push({ icon: '🌿', name: '지구 환경 지킴이', why: st.ecoCards >= 1 ? `생태 쉼터 ${st.ecoCards}회` : `기후·지형 문제 ${st.climateCorrect}개 정답` });
+  if (context.maxLaps > 0 && player.laps === context.maxLaps) list.push({ icon: '🚩', name: '세계 일주 마스터', why: `${player.laps}바퀴 완주` });
+  if (context.maxAttempts > 0 && st.totalAttempts === context.maxAttempts) list.push({ icon: '💡', name: '성실 탐험가', why: `가장 많은 ${st.totalAttempts}문제 도전` });
+  if (Object.keys(st.visitedContinents).length >= 3) list.push({ icon: '🧭', name: '대륙 탐험가', why: `${Object.keys(st.visitedContinents).length}개 대륙 방문` });
+  if (st.wrongQuizzes.length >= 1) list.push({ icon: '📈', name: '쑥쑥 성장', why: `복습할 문제 ${st.wrongQuizzes.length}개 발견` });
+
+  if (!list.length) list.push({ icon: '✨', name: '끝까지 함께한 탐험가', why: '마지막까지 완주' });
+  return list;
+}
+
+function renderLearningReport() {
+  if (!learningReport) return;
+
+  const maxLaps = Math.max(0, ...gamePlayers.map(p => p.laps || 0));
+  const maxAttempts = Math.max(0, ...gamePlayers.map(p => (p.quizStats ? p.quizStats.totalAttempts : 0)));
+  const context = { maxLaps, maxAttempts };
+
+  learningReport.innerHTML = gamePlayers.map((player, index) => {
+    const st = player.quizStats || { totalAttempts: 0, correctCount: 0, wrongQuizzes: [] };
+    const rate = st.totalAttempts ? Math.round((st.correctCount / st.totalAttempts) * 100) : 0;
+    const cont = topContinent(player);
+    const badges = badgesFor(player, context)
+      .map(b => `<span class="badge"><b>${b.icon} ${b.name}</b><i>${b.why}</i></span>`).join('');
+
+    return `
+      <div class="report-card">
+        <div class="report-card-top">
+          <span class="report-avatar p-${index}">${index + 1}</span>
+          <span class="report-name">${safeName(player.name)}${player.isAI ? ' (AI)' : ''}</span>
+          <span class="report-continent">${cont ? `${cont.name} 탐험가` : '탐험 준비 중'}</span>
+        </div>
+        <div class="report-rate-row">
+          <span class="report-rate-label">퀴즈 정답률</span>
+          <span class="report-rate-val">${st.totalAttempts}문항 중 <b>${st.correctCount}문항</b> 정답 (${rate}%)</span>
+        </div>
+        <div class="report-bar"><span style="width:${rate}%"></span></div>
+        <div class="report-badges">${badges}</div>
+      </div>`;
+  }).join('');
+}
+
+// 이번 판에서 나온 틀린 문제를 사람별로 모아 보여 줍니다.
+function renderReviewNote() {
+  if (!reviewList || !reviewSummary) return 0;
+
+  let total = 0;
+  const blocks = gamePlayers.map((player, index) => {
+    const wrong = (player.quizStats && player.quizStats.wrongQuizzes) || [];
+    if (!wrong.length) return '';
+    total += wrong.length;
+
+    const cards = wrong.map((w, i) => `
+      <div class="review-item">
+        <p class="review-q"><span class="review-no">${i + 1}</span> <b>[${safeName(w.spaceName)}]</b> ${safeName(w.question)}</p>
+        <p class="review-picked">고른 답 — ${safeName(w.selectedAnswer)}</p>
+        <p class="review-answer">정답 — <b>${safeName(w.correctAnswer)}</b></p>
+        <p class="review-explain">💡 ${highlightExplanation(w.explanation)}</p>
+      </div>`).join('');
+
+    return `
+      <div class="review-group">
+        <h3 class="review-group-title"><span class="report-avatar p-${index}">${index + 1}</span> ${safeName(player.name)} · 틀린 문제 ${wrong.length}개</h3>
+        ${cards}
+      </div>`;
+  }).join('');
+
+  if (!total) {
+    reviewSummary.textContent = '이번 판에서는 틀린 문제가 없습니다. 정말 잘했어요!';
+    reviewList.innerHTML = '<p class="review-empty">🎉 모두 정답이었습니다.</p>';
+    return 0;
+  }
+
+  reviewSummary.textContent = `이번 판에서 나온 틀린 문제 ${total}개입니다. 정답과 교과서 해설을 함께 읽고 배움공책에 정리해 보세요.`;
+  reviewList.innerHTML = blocks;
+  return total;
+}
+
+if (openReviewBtn) {
+  openReviewBtn.addEventListener('click', () => {
+    renderReviewNote();
+    reviewModal.classList.remove('hidden');
+  });
+}
+if (closeReviewBtn) closeReviewBtn.addEventListener('click', () => reviewModal.classList.add('hidden'));
+if (printReviewBtn) printReviewBtn.addEventListener('click', () => window.print());
 
 function checkGameOver(reason = 'round') {
   if (isGameFinished) return true;
@@ -999,6 +1121,13 @@ function checkGameOver(reason = 'round') {
     </div>
   `).join('');
 
+  renderLearningReport();
+  const wrongTotal = gamePlayers.reduce((sum, p) => sum + ((p.quizStats && p.quizStats.wrongQuizzes.length) || 0), 0);
+  if (openReviewBtn) openReviewBtn.textContent = wrongTotal
+    ? `📝 오늘 푼 퀴즈 오답 복습하기 (${wrongTotal}문제)`
+    : '📝 오늘 푼 퀴즈 돌아보기';
+  if (buildButton) buildButton.classList.add('hidden');
+
   gameOverModal.classList.remove('hidden');
   addActivityLog(`🏆 게임 종료! ${ranking[0].name} 우승`);
   return true;
@@ -1028,6 +1157,7 @@ function endTurn() {
     roundNumber.textContent = roundLabel();
   }
   currentPlayerIndex = next;
+  buildUsedThisTurn = false;   // 새 차례 — 건축 기회가 다시 생깁니다.
 
   updateAllRows();
   if (!checkGameOver('round')) updateCurrentTurnUI();
@@ -1367,6 +1497,7 @@ function applyBonusCard(playerIndex, card) {
       player.position = 0;
       renderPlayerPiece(playerIndex, 0);
       player.money += salaryBonus;
+      player.laps += 1;
       sounds.playCoin();
       showToast('🚩', `출발지로 이동! 월급 <b>${won(salaryBonus)}</b>을 받았습니다.`, 'good');
       updateAllRows();
@@ -1442,6 +1573,7 @@ function teleportTo(playerIndex, spaceIndex) {
 
   if (passedStart) {
     player.money += salaryBonus;
+    player.laps += 1;
     sounds.playCoin();
     showToast('💵', `가는 길에 출발지를 지나 월급 <b>${won(salaryBonus)}</b>을 받았습니다.`, 'good');
   }
@@ -1491,6 +1623,7 @@ function handleAIQuiz(playerIndex, spaceIndex, quiz, isSpecial, space, onDone, k
     const isCorrect = Math.random() < 0.78;
     const targetOption = isCorrect ? quiz.answer : (shuffled.find(o => o !== quiz.answer) || quiz.answer);
     const matched = optionButtons.find(o => o.option === targetOption);
+    recordQuiz(playerIndex, { space: isSpecial ? null : space, quiz, selected: targetOption, correct: isCorrect });
 
     if (matched) {
       if (isCorrect) {
@@ -1574,7 +1707,12 @@ const DISASTERS = [
     learn: '화산재는 하늘 높이 올라가 항공기 운항을 막기도 합니다.',
     cost: () => 40000 },
 
-  { id: 'wildfire', icon: '🔥', name: '산불', fits: ['지중해', '냉대', '침엽', '아마존', '우림', '산호초', '사바나', '콩고'],
+  { id: 'clearfire', icon: '🪵', name: '숲 개간 화재', fits: ['우림', '아마존', '콩고'],
+    story: (s) => `${s.name}에서 농장과 목장을 넓히려고 놓은 불이 크게 번졌습니다. 숲을 되살리는 일에 힘을 보탭니다.`,
+    learn: '열대 우림의 큰불은 대부분 자연이 아니라 땅을 개간하려고 놓은 불에서 시작됩니다.',
+    cost: (o) => 25000 + o.lands * 10000 },
+
+  { id: 'wildfire', icon: '🔥', name: '산불', fits: ['지중해', '냉대', '침엽', '사바나'],
     story: (s) => `${s.name}에 메마른 바람이 이어져 큰 산불이 났습니다. 불을 끄는 비용을 함께 냅니다.`,
     learn: '여름이 덥고 건조한 지역과 넓은 침엽수림에서는 산불이 크게 번지기 쉽습니다.',
     cost: (o) => 25000 + o.lands * 10000 },
@@ -1695,6 +1833,185 @@ function payToBank(playerIndex, amount, label) {
 
 // 틀렸을 때 정답이 무엇이었는지 화면에 표시합니다.
 // 오답에서 배우려면 정답을 봐야 하는데, 예전에는 알려 주지 않고 창이 닫혔습니다.
+// ============================================================
+// 수업용 학습 장치 — 해설 정독 유도 · 학습 기록
+// ============================================================
+
+// 정답 확인 뒤 버튼이 잠기는 시간입니다. 아이들이 [확인]을 연타해
+// 해설을 넘겨 버리는 것을 막고, 그동안 소리 내어 읽을 시간을 만듭니다.
+const READ_DELAY_MS = 2000;
+
+// 해설에서 형광펜으로 짚어 줄 교과 핵심어입니다.
+// 긴 말을 먼저 찾아야 짧은 말에 잘려 나가지 않습니다.
+const KEY_TERMS = [
+  '열대 우림 기후', '열대 우림', '사바나 기후', '사바나', '지중해성 기후', '서안 해양성 기후',
+  '툰드라', '빙설 기후', '고산 기후', '온대 계절풍', '계절풍', '편서풍', '무역풍',
+  '열대 기후', '건조 기후', '온대 기후', '냉대 기후', '한대 기후',
+  '열대', '건조', '온대', '냉대', '한대', '고산',
+  '적도', '위도', '경도', '해발 고도', '고도', '우기', '건기', '기온', '강수량',
+  '사막', '오아시스', '초원', '스텝', '침엽수림', '타이가', '지의류', '이끼',
+  '산맥', '산지', '고원', '평야', '분지', '하천', '유역', '삼각주', '협곡',
+  '해안', '갯벌', '반도', '섬나라', '내륙국', '대륙', '대양',
+  '빙하', '피오르', 'U자곡', 'V자곡', '카르스트', '석호', '산호초',
+  '화산', '지진', '온천', '판', '지각', '단층',
+  '유목', '이동식 가옥', '고상 가옥', '수상 가옥', '통나무집', '흙벽돌',
+  '벼농사', '이모작', '2기작', '플랜테이션', '수목 농업', '올리브', '대추야자',
+  '열대 우림 파괴', '사막화', '기후 변화', '지구 온난화', '백화 현상'
+];
+const KEY_TERM_RE = new RegExp(
+  '(' + KEY_TERMS
+    .slice()
+    .sort((a, b) => b.length - a.length)
+    .join('|') + ')',
+  'g'
+);
+
+// 해설 문장에 형광펜을 칠합니다. 원본을 한 번만 훑으므로 표시가 겹치지 않습니다.
+function highlightExplanation(text) {
+  return safeName(String(text || '')).replace(KEY_TERM_RE, m => `<mark class="quiz-key">${m}</mark>`);
+}
+
+// 해설을 띄웁니다. 퀴즈 화면 어디서든 이 함수만 씁니다.
+function showExplanation(text) {
+  quizExplanation.innerHTML = `💡 교과서 탐구: ${highlightExplanation(text)}`;
+  quizExplanation.classList.remove('hidden');
+}
+
+let readDelayTimer = null;
+// 넘어가는 버튼을 잠시 잠급니다. (예: 확인 (2초) → 확인 (1초) → 확인)
+function startReadDelay(...containers) {
+  clearReadDelay();
+  const buttons = [];
+  containers.forEach(c => { if (c) buttons.push(...c.querySelectorAll('button')); });
+  if (!buttons.length) return;
+
+  const labels = buttons.map(b => b.textContent);
+  let left = Math.ceil(READ_DELAY_MS / 1000);
+
+  const paint = () => buttons.forEach((b, i) => {
+    b.disabled = true;
+    b.classList.add('read-wait');
+    b.textContent = `${labels[i]} (${left}초)`;
+  });
+  const release = () => {
+    clearReadDelay();
+    buttons.forEach((b, i) => { b.disabled = false; b.classList.remove('read-wait'); b.textContent = labels[i]; });
+  };
+
+  paint();
+  readDelayTimer = setInterval(() => {
+    left -= 1;
+    if (left <= 0) release(); else paint();
+  }, 1000);
+}
+function clearReadDelay() {
+  if (readDelayTimer) { clearInterval(readDelayTimer); readDelayTimer = null; }
+}
+
+// ── 학습 기록 (게임 규칙에는 전혀 관여하지 않습니다)
+function recordQuiz(playerIndex, { space, quiz, selected, correct }) {
+  const player = gamePlayers[playerIndex];
+  if (!player || !player.quizStats || !quiz) return;
+  const st = player.quizStats;
+  st.totalAttempts += 1;
+  if (correct) {
+    st.correctCount += 1;
+    if (!space || space.isSpecial) st.climateCorrect += 1;
+    return;
+  }
+  st.wrongQuizzes.push({
+    spaceName: space ? space.name : '기후·지형 탐험',
+    question: quiz.question,
+    selectedAnswer: selected || '(고르지 못함)',
+    correctAnswer: quiz.answer,
+    explanation: quiz.explanation
+  });
+}
+
+function recordVisit(playerIndex, spaceIndex) {
+  const player = gamePlayers[playerIndex];
+  const space = spaces[spaceIndex];
+  if (!player || !player.quizStats || !space || !space.continent) return;
+  const visited = player.quizStats.visitedContinents;
+  visited[space.continent] = (visited[space.continent] || 0) + 1;
+}
+
+// ============================================================
+// 건물 짓기 — 문제를 맞히면 내 땅 중 원하는 곳에 짓습니다.
+// ============================================================
+let buildUsedThisTurn = false;   // 한 차례에 건물은 한 채까지
+
+// 아직 최고 단계가 아닌 내 땅 목록
+function buildableLands(playerIndex) {
+  const list = [];
+  propertyState.forEach((state, i) => {
+    if (state.owner === playerIndex && state.buildings < BUILD_RATES.length) list.push(i);
+  });
+  return list;
+}
+
+function canBuildNow(playerIndex) {
+  const player = gamePlayers[playerIndex];
+  if (!player || player.isBankrupt || isGameFinished || isMoving) return false;
+  if (buildUsedThisTurn) return false;
+  return buildableLands(playerIndex).some((i) => {
+    return player.items.includes('free-build') || player.money >= nextBuildCostOf(i);
+  });
+}
+
+function updateBuildButton() {
+  if (!buildButton) return;
+  const current = gamePlayers[currentPlayerIndex];
+  const hide = !current || current.isAI || isGameFinished;
+  buildButton.classList.toggle('hidden', hide);
+  if (hide) return;
+  const usable = canBuildNow(currentPlayerIndex);
+  buildButton.disabled = !usable;
+  buildBtnText.textContent = buildUsedThisTurn ? '이번 차례 건축 완료' : '건물 짓기';
+}
+
+// 내 땅 목록을 펼쳐 어디에 지을지 먼저 고르게 합니다.
+// 고른 나라의 문제를 맞혀야 실제로 지을 수 있습니다.
+function openBuildPicker(playerIndex, onFinish) {
+  const player = gamePlayers[playerIndex];
+  const lands = buildableLands(playerIndex);
+  const finish = onFinish || (() => {});
+
+  if (!lands.length) {
+    showToast('🏠', '아직 건물을 지을 수 있는 땅이 없습니다.', 'info');
+    finish();
+    return;
+  }
+
+  const choices = lands.map((i) => {
+    const space = spaces[i];
+    const state = propertyState[i];
+    const cost = nextBuildCostOf(i);
+    const nextToll = Math.round(space.cost * TOLL_RATES[Math.min(state.buildings + 1, 3)]);
+    const buildName = BUILD_NAMES[Math.min(state.buildings, BUILD_NAMES.length - 1)];
+    const free = player.items.includes('free-build');
+    const afford = free || player.money >= cost;
+    return {
+      label: `${space.name} · ${buildName}`,
+      sub: afford
+        ? `${free ? '무료 증축권' : won(cost)} · 통행세 ${won(tollOf(i))} → ${won(nextToll)}`
+        : `${won(cost)} 필요 · 현금이 모자랍니다`,
+      disabled: !afford,
+      onClick: () => offerBuild(playerIndex, i, finish)
+    };
+  });
+
+  openChoiceModal({
+    eyebrow: 'BUILD · 어디에 지을까요?',
+    icon: '🏗️',
+    title: '어느 나라에 건물을 지을까요?',
+    desc: `고른 나라의 문제를 맞혀야 건물을 지을 수 있습니다. 통행세가 비싼 곳일수록 값도 비쌉니다. 보유 현금은 ${won(player.money)}입니다.`,
+    choices,
+    buttons: [{ label: '이번에는 짓지 않기', onClick: finish }]
+  });
+  cardChoices.classList.add('build-choices');
+}
+
 function revealAnswer(quiz) {
   [...quizOptions.querySelectorAll('button')].forEach(b => {
     if (b.textContent === quiz.answer) b.classList.add('correct');
@@ -1727,7 +2044,11 @@ function resolveLanding(playerIndex) {
       return;
     }
 
-    if (space.type === 'special-eco') { drawBonusCard(playerIndex); return; }
+    if (space.type === 'special-eco') {
+      if (player.quizStats) player.quizStats.ecoCards += 1;
+      drawBonusCard(playerIndex);
+      return;
+    }
 
     const isClimate = space.type === 'special-climate';
     const quiz = isClimate ? climateQuiz() : landformQuiz();
@@ -1749,8 +2070,8 @@ function resolveLanding(playerIndex) {
       btn.textContent = option;
       btn.addEventListener('click', () => {
         [...quizOptions.querySelectorAll('button')].forEach(b => { b.disabled = true; });
-        quizExplanation.textContent = `💡 학습 쏙쏙: ${quiz.explanation}`;
-        quizExplanation.classList.remove('hidden');
+        recordQuiz(playerIndex, { space, quiz, selected: option, correct: option === quiz.answer });
+        showExplanation(quiz.explanation);
 
         if (option === quiz.answer) {
           btn.classList.add('correct');
@@ -1766,6 +2087,7 @@ function resolveLanding(playerIndex) {
           quizResult.innerHTML = `아쉽게도 정답이 아닙니다. 정답은 <b class="quiz-amount good">${quiz.answer}</b> 입니다.`;
         }
         specialActions.classList.remove('hidden');
+        startReadDelay(specialActions);
       });
       quizOptions.appendChild(btn);
     });
@@ -1773,6 +2095,8 @@ function resolveLanding(playerIndex) {
     quizModal.classList.remove('hidden');
     return;
   }
+
+  recordVisit(playerIndex, spaceIndex);
 
   // ── 2. 자연재해 — 나라 칸에서 가끔 일어나고, 이번 차례는 여기서 끝납니다.
   if (Math.random() < DISASTER_CHANCE) { triggerDisaster(playerIndex, spaceIndex); return; }
@@ -1835,47 +2159,60 @@ function resolveLanding(playerIndex) {
   }
 
   // ── 4. 내 땅: 문제를 맞혀야 건물을 지을 수 있습니다.
-  if (state.owner === playerIndex) { offerBuild(playerIndex, spaceIndex); return; }
+  //         지을 곳은 밟은 칸이 아니라 내 땅 중에서 골라 정합니다.
+  if (state.owner === playerIndex) {
+    const finishTurn = () => setTimeout(endTurn, 700);
+    if (buildUsedThisTurn) {
+      showToast('🏠', `${space.name}은(는) 내 땅입니다. 이번 차례에는 이미 건물을 지었습니다.`, 'info');
+      finishTurn();
+      return;
+    }
+    if (player.isAI) { offerBuild(playerIndex, spaceIndex, finishTurn); return; }
+    openBuildPicker(playerIndex, finishTurn);
+    return;
+  }
 
   // ── 5. 남의 땅: 통행세
   payToll(playerIndex, state.owner, spaceIndex);
 }
 
 // 내 땅에 도착했을 때 — 그 나라 문제를 맞혀야 건물을 지을 수 있습니다.
-function offerBuild(playerIndex, spaceIndex) {
+function offerBuild(playerIndex, spaceIndex, onFinish) {
   const player = gamePlayers[playerIndex];
   const state = propertyState[spaceIndex];
   const space = spaces[spaceIndex];
   const cost = nextBuildCostOf(spaceIndex);
   const hasFree = player.items.includes('free-build');
+  const finish = onFinish || (() => setTimeout(endTurn, 700));
 
-  if (state.buildings >= 3) {
-    showToast('🏠', `${space.name}은(는) 이미 건물 3단계(최대)입니다. 통행세 ${won(tollOf(spaceIndex))}`, 'info');
-    setTimeout(endTurn, 600);
+  if (state.buildings >= BUILD_RATES.length) {
+    showToast('🏠', `${space.name}은(는) 이미 ${BUILD_NAMES[BUILD_NAMES.length - 1]}까지 지었습니다. 통행세 ${won(tollOf(spaceIndex))}`, 'info');
+    finish();
     return;
   }
 
   // 지을 돈도 무료 증축권도 없다면 문제를 낼 이유가 없습니다.
   if (!hasFree && player.money < cost) {
     showToast('🏠', `${space.name}에 건물을 지으려면 ${won(cost)}이 필요합니다. 이번에는 쉬어 갑니다.`, 'info');
-    setTimeout(endTurn, 700);
+    finish();
     return;
   }
 
   const quiz = countryQuiz(space.name);
-  if (!quiz) { showBuildChoice(playerIndex, spaceIndex); return; }   // 문제가 없는 칸은 그대로 진행
+  if (!quiz) { showBuildChoice(playerIndex, spaceIndex, finish); return; }   // 문제가 없는 칸은 그대로 진행
   activeQuizSpace = spaceIndex;
 
   if (player.isAI) {
     handleAIQuiz(playerIndex, spaceIndex, quiz, false, space, (correct) => {
+      buildUsedThisTurn = true;
       if (!correct) {
         showToast('🏠', `🤖 <b>${safeName(player.name)}</b> 님이 건축 문제를 틀려 건물을 짓지 못했습니다.`, 'info');
-        setTimeout(endTurn, 600);
+        finish();
         return;
       }
       player.money += landQuizReward;
       updateAllRows();
-      showBuildChoice(playerIndex, spaceIndex);
+      showBuildChoice(playerIndex, spaceIndex, finish);
     }, 'build');
     return;
   }
@@ -1897,26 +2234,28 @@ function offerBuild(playerIndex, spaceIndex) {
     btn.textContent = option;
     btn.addEventListener('click', () => {
       [...quizOptions.querySelectorAll('button')].forEach(b => { b.disabled = true; });
-      quizExplanation.textContent = `💡 교과서 탐구: ${quiz.explanation}`;
-      quizExplanation.classList.remove('hidden');
+      const correct = option === quiz.answer;
+      buildUsedThisTurn = true;   // 맞히든 틀리든 이번 차례의 건축 기회는 여기서 씁니다
+      recordQuiz(playerIndex, { space, quiz, selected: option, correct });
+      showExplanation(quiz.explanation);
 
-      if (option === quiz.answer) {
+      if (correct) {
         btn.classList.add('correct');
         sounds.playCorrect();
         player.money += landQuizReward;
         updateAllRows();
         quizResult.textContent = `🎉 정답입니다! 탐험 수당 ${won(landQuizReward)}을 받고 건물을 지을 수 있습니다.`;
         showToast('🎓', `정답! 탐험 수당 <b>${won(landQuizReward)}</b>을 받았습니다.`, 'good');
-        afterQuizAction = () => showBuildChoice(playerIndex, spaceIndex);
-        specialActions.classList.remove('hidden');
+        afterQuizAction = () => showBuildChoice(playerIndex, spaceIndex, finish);
       } else {
         btn.classList.add('incorrect');
         sounds.playIncorrect();
         revealAnswer(quiz);
         quizResult.innerHTML = `아쉽게도 틀렸습니다. 정답은 <b class="quiz-amount good">${quiz.answer}</b> 입니다.`;
-        afterQuizAction = null;
-        specialActions.classList.remove('hidden');
+        afterQuizAction = finish;
       }
+      specialActions.classList.remove('hidden');
+      startReadDelay(specialActions);
     });
     quizOptions.appendChild(btn);
   });
@@ -1925,12 +2264,13 @@ function offerBuild(playerIndex, spaceIndex) {
 }
 
 // 문제를 맞힌 뒤 실제로 지을지 고르는 단계
-function showBuildChoice(playerIndex, spaceIndex) {
+function showBuildChoice(playerIndex, spaceIndex, onFinish) {
   const player = gamePlayers[playerIndex];
   const state = propertyState[spaceIndex];
   const space = spaces[spaceIndex];
   const cost = nextBuildCostOf(spaceIndex);
   const hasFree = player.items.includes('free-build');
+  const finish = onFinish || (() => setTimeout(endTurn, 700));
 
   const build = (free) => {
     const builtName = BUILD_NAMES[Math.min(state.buildings, BUILD_NAMES.length - 1)];
@@ -1941,15 +2281,17 @@ function showBuildChoice(playerIndex, spaceIndex) {
     showToast('🏠', free
       ? `무료 증축권으로 ${space.name}에 <b>${builtName}</b>을(를) 지었습니다! 통행세 ${won(tollOf(spaceIndex))}`
       : `${space.name}에 <b>${builtName}</b>을(를) 지었습니다. <b>-${won(cost)}</b> · 통행세 ${won(tollOf(spaceIndex))}`, 'good');
+    buildUsedThisTurn = true;
     updateAllRows();
     updatePropertyTile(spaceIndex);
-    setTimeout(endTurn, 700);
+    updateBuildButton();
+    finish();
   };
 
   if (player.isAI) {
     if (hasFree) build(true);
-    else if (player.money - cost >= 60000) build(false);
-    else { showToast('🏳️', `🤖 <b>${safeName(player.name)}</b> 님이 ${space.name}에서 쉬어 갑니다.`, 'info'); setTimeout(endTurn, 700); }
+    else if (player.money - cost >= 120000) build(false);
+    else { showToast('🏳️', `🤖 <b>${safeName(player.name)}</b> 님이 ${space.name}에서 쉬어 갑니다.`, 'info'); finish(); }
     return;
   }
 
@@ -1958,7 +2300,7 @@ function showBuildChoice(playerIndex, spaceIndex) {
   const buttons = [];
   if (hasFree) buttons.push({ label: '🏗️ 무료 증축권으로 짓기', primary: true, onClick: () => build(true) });
   if (player.money >= cost) buttons.push({ label: `${won(cost)} 내고 짓기`, primary: !hasFree, onClick: () => build(false) });
-  buttons.push({ label: '짓지 않기', onClick: () => setTimeout(endTurn, 100) });
+  buttons.push({ label: '짓지 않기', onClick: finish });
 
   openChoiceModal({
     eyebrow: `MY LAND · ${space.name}`,
@@ -1993,6 +2335,7 @@ async function movePlayerStepByStep(playerIndex, steps) {
     // 출발지를 지나거나 도착하면 월급을 1회 지급합니다 (도착 보너스는 착륙 처리에서 따로 줍니다).
     if (nextPos === 0) {
       player.money += salaryBonus;
+      player.laps += 1;
       sounds.playCoin();
       updatePlayerRow(playerIndex);
       showToast('💵', `<b>${safeName(player.name)}</b> 님이 출발지를 지나 월급 <b>${won(salaryBonus)}</b>을 받았습니다.`, 'good');
@@ -2088,8 +2431,50 @@ function currentDieTopFace(dieIndex = 0) {
 
 diceElements.forEach((_, i) => setDieFace(i, 1, 0));
 
+// AI가 건물을 올리기에 가장 이득인 땅 — 통행세가 가장 많이 오르는 곳
+function aiPickBuildLand(playerIndex) {
+  const player = gamePlayers[playerIndex];
+  let best = -1;
+  let bestGain = 0;
+  buildableLands(playerIndex).forEach((i) => {
+    const cost = nextBuildCostOf(i);
+    if (player.money - cost < 120000) return;
+    const stage = propertyState[i].buildings;
+    const gain = spaces[i].cost * (TOLL_RATES[Math.min(stage + 1, 3)] - TOLL_RATES[Math.min(stage, 3)]);
+    if (gain > bestGain) { bestGain = gain; best = i; }
+  });
+  return best;
+}
+
+// AI도 사람과 똑같이 차례당 한 채까지 지습니다.
+function aiTryBuild(playerIndex) {
+  const player = gamePlayers[playerIndex];
+  if (!player || !player.isAI || buildUsedThisTurn) return;
+  const target = aiPickBuildLand(playerIndex);
+  if (target === -1) return;
+
+  buildUsedThisTurn = true;
+  const space = spaces[target];
+  const quiz = countryQuiz(space.name);
+  const correct = Math.random() < 0.78;
+  recordQuiz(playerIndex, { space, quiz, selected: null, correct });
+  if (!correct) return;
+
+  const state = propertyState[target];
+  const cost = nextBuildCostOf(target);
+  const buildName = BUILD_NAMES[Math.min(state.buildings, BUILD_NAMES.length - 1)];
+  player.money -= cost;
+  state.buildings += 1;
+  sounds.playCoin();
+  showToast('🏠', `🤖 <b>${safeName(player.name)}</b> 님이 ${space.name}에 <b>${buildName}</b>을(를) 지었습니다. <b>-${won(cost)}</b>`, 'info');
+  updateAllRows();
+  updatePropertyTile(target);
+}
+
 function triggerDiceRoll() {
   if (!gamePlayers.length || isGameFinished || isMoving) return;
+  const roller = gamePlayers[currentPlayerIndex];
+  if (roller && roller.isAI) aiTryBuild(currentPlayerIndex);
   rollButton.disabled = true;
   sounds.playRoll();
 
@@ -2115,6 +2500,14 @@ function triggerDiceRoll() {
 }
 
 rollButton.addEventListener('click', triggerDiceRoll);
+
+if (buildButton) {
+  buildButton.addEventListener('click', () => {
+    if (!canBuildNow(currentPlayerIndex)) return;
+    // 주사위를 굴리기 전에 짓는 것이므로 차례를 넘기지 않습니다.
+    openBuildPicker(currentPlayerIndex, () => { updateBuildButton(); });
+  });
+}
 
 // ============================================================
 // 구매 / 건너뛰기 / 확인 버튼
@@ -2211,9 +2604,23 @@ function renderNameFields() {
 
 function createPlayers(playerConfigs) {
   extraRollQueue.length = 0;
+  buildUsedThisTurn = false;
   gamePlayers = playerConfigs.map((cfg, index) => {
     renderPlayerPiece(index, 0);
-    return { index, name: cfg.name, isAI: cfg.isAI || false, money: startingMoney, position: 0, items: [], isBankrupt: false };
+    return {
+      index, name: cfg.name, isAI: cfg.isAI || false,
+      money: startingMoney, position: 0, items: [], isBankrupt: false,
+      laps: 0,
+      // 수업용 학습 리포트를 만들기 위한 기록입니다. 게임 규칙에는 관여하지 않습니다.
+      quizStats: {
+        totalAttempts: 0,      // 푼 퀴즈 총 개수
+        correctCount: 0,       // 맞힌 퀴즈 개수
+        climateCorrect: 0,     // 기후·지형 특수칸에서 맞힌 개수
+        ecoCards: 0,           // 생태 쉼터에서 뽑은 카드 수
+        visitedContinents: {}, // 대륙별 방문 횟수
+        wrongQuizzes: []       // 틀린 문제 [{ spaceName, question, selectedAnswer, correctAnswer, explanation }]
+      }
+    };
   });
 
   playerCards.forEach((card, index) => {
