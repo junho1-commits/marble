@@ -110,7 +110,7 @@ const WRONG_TOLL_RATE = 1.2;     // 통행세 퀴즈를 틀리면 1.2배
 
 // 통행세 = 땅값 × 건물 단계별 배율. 빈 땅은 가볍게, 건물을 올린 땅은 조금씩 무겁게.
 // 차례마다 건물을 지을 수 있게 되면서 세 단계가 모두 실제로 쓰이므로 배율을 완만하게 낮췄습니다.
-const TOLL_RATES = [0.4, 0.7, 1.0, 1.3];
+const TOLL_RATES = [0.4, 0.55, 0.7, 0.85];
 
 // 건물은 단계가 올라갈수록 더 크고 비싼 건물을 짓습니다 (땅값 대비 배율).
 const BUILD_RATES = [0.5, 0.7, 0.9];
@@ -987,15 +987,26 @@ function badgesFor(player, context) {
   const rate = st.totalAttempts ? st.correctCount / st.totalAttempts : 0;
   const list = [];
 
+  let lands = 0;
+  let buildings = 0;
+  propertyState.forEach((st2, i) => {
+    if (st2.owner === player.index) { lands += 1; buildings += st2.buildings; }
+  });
+  const continents = Object.keys(st.visitedContinents).length;
+
   if (st.totalAttempts >= 3 && rate >= 0.8) list.push({ icon: '🎓', name: '지리 척척박사', why: `정답률 ${Math.round(rate * 100)}%` });
   if (st.ecoCards >= 1 || st.climateCorrect >= 2) list.push({ icon: '🌿', name: '지구 환경 지킴이', why: st.ecoCards >= 1 ? `생태 쉼터 ${st.ecoCards}회` : `기후·지형 문제 ${st.climateCorrect}개 정답` });
   if (context.maxLaps > 0 && player.laps === context.maxLaps) list.push({ icon: '🚩', name: '세계 일주 마스터', why: `${player.laps}바퀴 완주` });
   if (context.maxAttempts > 0 && st.totalAttempts === context.maxAttempts) list.push({ icon: '💡', name: '성실 탐험가', why: `가장 많은 ${st.totalAttempts}문제 도전` });
-  if (Object.keys(st.visitedContinents).length >= 3) list.push({ icon: '🧭', name: '대륙 탐험가', why: `${Object.keys(st.visitedContinents).length}개 대륙 방문` });
+  if (continents >= 2) list.push({ icon: '🧭', name: '대륙 탐험가', why: `${continents}개 대륙 방문` });
+  if (buildings >= 1) list.push({ icon: '🏠', name: '건축왕', why: `건물 ${buildings}채 완성` });
+  if (lands >= 1) list.push({ icon: '🏳️', name: '세계의 지주', why: `${lands}개 나라 탐험 기지` });
   if (st.wrongQuizzes.length >= 1) list.push({ icon: '📈', name: '쑥쑥 성장', why: `복습할 문제 ${st.wrongQuizzes.length}개 발견` });
+  if (st.totalAttempts >= 1) list.push({ icon: '✋', name: '도전하는 탐험가', why: `${st.totalAttempts}문제에 손들기` });
 
   if (!list.length) list.push({ icon: '✨', name: '끝까지 함께한 탐험가', why: '마지막까지 완주' });
-  return list;
+  // 아이마다 받는 뱃지 수가 크게 벌어지면 칭찬이 아니라 순위표가 됩니다. 최대 3개까지만 보여 줍니다.
+  return list.slice(0, 3);
 }
 
 function renderLearningReport() {
@@ -1232,9 +1243,9 @@ function payToll(playerIndex, ownerIndex, spaceIndex) {
     btn.textContent = option;
     btn.addEventListener('click', () => {
       [...quizOptions.querySelectorAll('button')].forEach(b => { b.disabled = true; });
-      quizExplanation.textContent = `💡 교과서 탐구: ${quiz.explanation}`;
-      quizExplanation.classList.remove('hidden');
       const correct = option === quiz.answer;
+      recordQuiz(playerIndex, { space, quiz, selected: option, correct });
+      showExplanation(quiz.explanation);
       if (correct) {
         btn.classList.add('correct');
         sounds.playCorrect();
@@ -1247,6 +1258,7 @@ function payToll(playerIndex, ownerIndex, spaceIndex) {
       }
       afterQuizAction = () => settleToll(playerIndex, ownerIndex, spaceIndex, correct ? 1 : WRONG_TOLL_RATE);
       specialActions.classList.remove('hidden');
+      startReadDelay(specialActions);
     });
     quizOptions.appendChild(btn);
   });
@@ -1662,8 +1674,7 @@ function handleAIQuiz(playerIndex, spaceIndex, quiz, isSpecial, space, onDone, k
       }
     }
 
-    quizExplanation.textContent = `💡 교과서 해설: ${quiz.explanation}`;
-    quizExplanation.classList.remove('hidden');
+    showExplanation(quiz.explanation);
 
     setTimeout(() => {
       if (isGameFinished) return;
@@ -1878,6 +1889,8 @@ function showExplanation(text) {
 }
 
 let readDelayTimer = null;
+let readDelayPending = [];   // [버튼, 원래 글자] — 중간에 창이 닫혀도 글자를 되돌리기 위해 들고 있습니다.
+
 // 넘어가는 버튼을 잠시 잠급니다. (예: 확인 (2초) → 확인 (1초) → 확인)
 function startReadDelay(...containers) {
   clearReadDelay();
@@ -1885,27 +1898,31 @@ function startReadDelay(...containers) {
   containers.forEach(c => { if (c) buttons.push(...c.querySelectorAll('button')); });
   if (!buttons.length) return;
 
-  const labels = buttons.map(b => b.textContent);
+  readDelayPending = buttons.map(b => [b, b.textContent]);
   let left = Math.ceil(READ_DELAY_MS / 1000);
 
-  const paint = () => buttons.forEach((b, i) => {
+  const paint = () => readDelayPending.forEach(([b, label]) => {
     b.disabled = true;
     b.classList.add('read-wait');
-    b.textContent = `${labels[i]} (${left}초)`;
+    b.textContent = `${label} (${left}초)`;
   });
-  const release = () => {
-    clearReadDelay();
-    buttons.forEach((b, i) => { b.disabled = false; b.classList.remove('read-wait'); b.textContent = labels[i]; });
-  };
 
   paint();
   readDelayTimer = setInterval(() => {
     left -= 1;
-    if (left <= 0) release(); else paint();
+    if (left <= 0) clearReadDelay(); else paint();
   }, 1000);
 }
+
+// 카운트다운을 끝내고 버튼을 원래 글자·활성 상태로 되돌립니다.
 function clearReadDelay() {
   if (readDelayTimer) { clearInterval(readDelayTimer); readDelayTimer = null; }
+  readDelayPending.forEach(([b, label]) => {
+    b.disabled = false;
+    b.classList.remove('read-wait');
+    b.textContent = label;
+  });
+  readDelayPending = [];
 }
 
 // ── 학습 기록 (게임 규칙에는 전혀 관여하지 않습니다)
@@ -2131,10 +2148,11 @@ function resolveLanding(playerIndex) {
       btn.textContent = option;
       btn.addEventListener('click', () => {
         [...quizOptions.querySelectorAll('button')].forEach(b => { b.disabled = true; });
-        quizExplanation.textContent = `💡 교과서 탐구: ${quiz.explanation}`;
-        quizExplanation.classList.remove('hidden');
+        const correct = option === quiz.answer;
+        recordQuiz(playerIndex, { space, quiz, selected: option, correct });
+        showExplanation(quiz.explanation);
 
-        if (option === quiz.answer) {
+        if (correct) {
           btn.classList.add('correct');
           sounds.playCorrect();
           player.money += landQuizReward;
@@ -2142,6 +2160,7 @@ function resolveLanding(playerIndex) {
           quizResult.textContent = `🎉 정답입니다! 탐험 수당 ${won(landQuizReward)}을 받고 땅을 구매할 수 있습니다.`;
           showToast('🎓', `정답! 탐험 수당 <b>${won(landQuizReward)}</b>을 받았습니다.`, 'good');
           purchaseActions.classList.remove('hidden');
+          startReadDelay(purchaseActions);
         } else {
           btn.classList.add('incorrect');
           sounds.playIncorrect();
@@ -2149,6 +2168,7 @@ function resolveLanding(playerIndex) {
           quizResult.innerHTML = `아쉽게도 틀렸습니다. 정답은 <b class="quiz-amount good">${quiz.answer}</b> 입니다.`;
           afterQuizAction = null;
           specialActions.classList.remove('hidden');
+          startReadDelay(specialActions);
         }
       });
       quizOptions.appendChild(btn);
@@ -2205,6 +2225,7 @@ function offerBuild(playerIndex, spaceIndex, onFinish) {
   if (player.isAI) {
     handleAIQuiz(playerIndex, spaceIndex, quiz, false, space, (correct) => {
       buildUsedThisTurn = true;
+      updateBuildButton();
       if (!correct) {
         showToast('🏠', `🤖 <b>${safeName(player.name)}</b> 님이 건축 문제를 틀려 건물을 짓지 못했습니다.`, 'info');
         finish();
@@ -2236,6 +2257,7 @@ function offerBuild(playerIndex, spaceIndex, onFinish) {
       [...quizOptions.querySelectorAll('button')].forEach(b => { b.disabled = true; });
       const correct = option === quiz.answer;
       buildUsedThisTurn = true;   // 맞히든 틀리든 이번 차례의 건축 기회는 여기서 씁니다
+      updateBuildButton();
       recordQuiz(playerIndex, { space, quiz, selected: option, correct });
       showExplanation(quiz.explanation);
 
@@ -2290,7 +2312,7 @@ function showBuildChoice(playerIndex, spaceIndex, onFinish) {
 
   if (player.isAI) {
     if (hasFree) build(true);
-    else if (player.money - cost >= 120000) build(false);
+    else if (player.money - cost >= 150000) build(false);
     else { showToast('🏳️', `🤖 <b>${safeName(player.name)}</b> 님이 ${space.name}에서 쉬어 갑니다.`, 'info'); finish(); }
     return;
   }
@@ -2438,7 +2460,7 @@ function aiPickBuildLand(playerIndex) {
   let bestGain = 0;
   buildableLands(playerIndex).forEach((i) => {
     const cost = nextBuildCostOf(i);
-    if (player.money - cost < 120000) return;
+    if (player.money - cost < 150000) return;
     const stage = propertyState[i].buildings;
     const gain = spaces[i].cost * (TOLL_RATES[Math.min(stage + 1, 3)] - TOLL_RATES[Math.min(stage, 3)]);
     if (gain > bestGain) { bestGain = gain; best = i; }

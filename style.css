@@ -1402,7 +1402,7 @@ button { font: inherit; }
 .toast-area {
   /* 보드판 한가운데 빈 공간에 띄워 칸 이름을 가리지 않게 한다 */
   position: absolute;
-  bottom: 26%;   /* 주사위 버튼 위, 보드 가운데 빈 공간에서 쌓이도록 */
+  bottom: 38%;   /* 주사위 버튼 위, 보드 가운데 빈 공간에서 쌓이도록 */
   left: 50%;
   width: 132%;
   z-index: 20;
@@ -1584,11 +1584,12 @@ button { font: inherit; }
    ============================================================ */
 
 /* 주사위 옆 '건물 짓기' 버튼 — 굴리기 전에 전략을 세우는 자리 */
+.center-build-row { display: flex; justify-content: center; margin-top: 6px; }
+
 .build-button {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 8px;
   padding: 11px 16px;
   border: 2px solid var(--ink);
   background: var(--white);
@@ -1779,7 +1780,8 @@ mark.quiz-key {
 
 /* 세로가 짧은 크롬북 화면에서 버튼이 겹치지 않도록 */
 @media (max-height: 760px) {
-  .build-button { margin-top: 5px; padding: 8px 13px; font-size: 12px; }
+  .center-build-row { margin-top: 3px; }
+  .build-button { padding: 7px 12px; font-size: 12px; }
   .report-card { padding: 10px 12px; }
   .report-heading { font-size: 19px; }
 }
