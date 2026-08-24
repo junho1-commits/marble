@@ -3,7 +3,6 @@
 
 const board = document.querySelector('#board');
 const rollButton = document.querySelector('#roll-button');
-const buildButton = document.querySelector('#build-button');
 const learningReport = document.querySelector('#learning-report');
 const reviewModal = document.querySelector('#review-modal');
 const reviewList = document.querySelector('#review-list');
@@ -11,7 +10,6 @@ const reviewSummary = document.querySelector('#review-summary');
 const openReviewBtn = document.querySelector('#open-review');
 const closeReviewBtn = document.querySelector('#close-review');
 const printReviewBtn = document.querySelector('#print-review');
-const buildBtnText = document.querySelector('#build-btn-text');
 const rollBtnText = document.querySelector('#roll-btn-text');
 const diceElements = [document.querySelector('#die-one'), document.querySelector('#die-two')].filter(Boolean);
 const rollSum = document.querySelector('#roll-sum');
@@ -108,12 +106,11 @@ const specialQuizReward = 30000; // 기후/지형 퀴즈 정답 장학금
 const landQuizReward = 5000;     // 나라 칸 퀴즈를 맞혔을 때 주는 탐험 수당
 const WRONG_TOLL_RATE = 1.2;     // 통행세 퀴즈를 틀리면 1.2배
 
-// 통행세 = 땅값 × 건물 단계별 배율. 빈 땅은 가볍게, 건물을 올린 땅은 조금씩 무겁게.
-// 차례마다 건물을 지을 수 있게 되면서 세 단계가 모두 실제로 쓰이므로 배율을 완만하게 낮췄습니다.
-const TOLL_RATES = [0.4, 0.55, 0.7, 0.85];
+// 통행세 = 땅값 × 건물 단계별 배율. 빈 땅은 가볍게, 건물을 올린 땅은 무섭게.
+const TOLL_RATES = [0.4, 1.5, 2.8, 4.5];
 
 // 건물은 단계가 올라갈수록 더 크고 비싼 건물을 짓습니다 (땅값 대비 배율).
-const BUILD_RATES = [0.5, 0.7, 0.9];
+const BUILD_RATES = [0.5, 0.9, 1.5];
 const BUILD_NAMES = ['🏠 집', '🏘️ 마을', '🏰 랜드마크'];
 
 // 급하게 파는 땅은 은행이 제값을 쳐주지 않습니다.
@@ -147,25 +144,47 @@ function bookValueOf(spaceIndex) { return spaces[spaceIndex].cost + buildValueOf
 function sellValueOf(spaceIndex) { return Math.round(bookValueOf(spaceIndex) * SELL_REFUND_RATE); }
 
 // Web Audio API 사운드 합성기 (크롬북 정책 호환 및 예외 처리)
+// 교실 스피커에서도 들리도록 전체 음량을 올립니다.
+// 여러 음이 겹쳐도 찌그러지지 않게 뒤에 리미터를 답니다.
+const MASTER_VOLUME = 2.6;
+
 class SoundManager {
-  constructor() { this.ctx = null; }
+  constructor() { this.ctx = null; this.master = null; }
 
   init() {
     try {
       if (!this.ctx) {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (AudioCtx) this.ctx = new AudioCtx();
+        if (!AudioCtx) return;
+        this.ctx = new AudioCtx();
+
+        // 음량 조절용 마스터 → 소리가 겹칠 때 찌그러짐을 막는 리미터 → 스피커
+        this.master = this.ctx.createGain();
+        this.master.gain.value = MASTER_VOLUME;
+        const limiter = this.ctx.createDynamicsCompressor();
+        limiter.threshold.value = -8;
+        limiter.knee.value = 6;
+        limiter.ratio.value = 8;
+        limiter.attack.value = 0.003;
+        limiter.release.value = 0.12;
+        this.master.connect(limiter);
+        limiter.connect(this.ctx.destination);
       }
-      if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+      if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
     } catch (e) {
       console.warn('AudioContext init failed:', e);
     }
   }
 
+  // 소리를 낼 준비가 되었는지 (브라우저가 막고 있지 않은지)
+  get ready() { return !!this.ctx && this.ctx.state === 'running'; }
+
   tone(freq, type, dur, vol, delay) {
     setTimeout(() => {
       try {
-        if (!this.ctx) return;
+        // 브라우저가 아직 소리를 막고 있다면 예약해 두지 않고 버립니다.
+        // 쌓아 두면 나중에 풀리는 순간 한꺼번에 터집니다.
+        if (!this.ctx || this.ctx.state !== 'running' || !this.master) return;
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = type;
@@ -173,7 +192,7 @@ class SoundManager {
         gain.gain.setValueAtTime(vol, this.ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(this.master);
         osc.start();
         osc.stop(this.ctx.currentTime + dur);
       } catch (err) {}
@@ -189,7 +208,7 @@ class SoundManager {
     } catch (e) {}
   }
 
-  playRoll() { this.play([170, 210, 185, 225], 'triangle', 0.06, 0.08, 65); }
+  playRoll() { this.play([170, 210, 185, 225], 'triangle', 0.07, 0.14, 65); }
   playStep() { this.play([660], 'sine', 0.08, 0.12, 0); }
   playCorrect() { this.play([523.25, 659.25, 783.99, 1046.5], 'sine', 0.25, 0.15, 90); }
   playIncorrect() { this.play([220, 175, 140], 'sawtooth', 0.2, 0.12, 80); }
@@ -201,10 +220,23 @@ class SoundManager {
 
 const sounds = new SoundManager();
 
+// 화면 어디든 처음 누르는 순간 오디오를 깨웁니다.
+['pointerdown', 'keydown', 'touchstart'].forEach((evt) => {
+  window.addEventListener(evt, () => sounds.init(), { capture: true, once: false, passive: true });
+});
+
 soundToggleBtn.addEventListener('click', () => {
   soundEnabled = !soundEnabled;
   soundToggleBtn.textContent = soundEnabled ? '🔊 소리 ON' : '🔇 소리 OFF';
-  if (soundEnabled) sounds.playStep();
+  if (!soundEnabled) return;
+
+  // 켤 때는 확실히 들리는 확인음을 냅니다. 수업 전 스피커 점검용입니다.
+  sounds.playCard();
+  setTimeout(() => {
+    if (!sounds.ready) {
+      showToast('🔇', '브라우저가 소리를 막고 있습니다. 화면을 한 번 클릭한 뒤 다시 눌러 주세요. 그래도 안 들리면 <b>기기 음량</b>과 <b>탭 음소거</b>를 확인해 주세요.', 'bad');
+    }
+  }, 260);
 });
 
 // ============================================================
@@ -814,7 +846,6 @@ function openChoiceModal({ eyebrow, icon, title, desc, descHtml, buttons = [], c
   if (descHtml) cardDesc.innerHTML = descHtml; else cardDesc.textContent = desc || '';
 
   cardChoices.innerHTML = '';
-  cardChoices.classList.remove('build-choices');
   cardChoices.classList.toggle('hidden', !choices);
   if (choices) {
     choices.forEach(ch => {
@@ -889,7 +920,7 @@ function updatePlayerRow(index) {
   }
 }
 
-function updateAllRows() { gamePlayers.forEach((_, i) => updatePlayerRow(i)); updateBuildButton(); }
+function updateAllRows() { gamePlayers.forEach((_, i) => updatePlayerRow(i)); }
 
 function updatePropertyTile(spaceIndex) {
   const state = propertyState[spaceIndex];
@@ -944,7 +975,6 @@ function updateCurrentTurnUI() {
   }
 
   playerCards.forEach((card, index) => card.classList.toggle('active', index === currentPlayerIndex));
-  updateBuildButton();
 
   if (current.isAI && !isGameFinished && !isMoving) {
     setTimeout(() => {
@@ -1137,7 +1167,6 @@ function checkGameOver(reason = 'round') {
   if (openReviewBtn) openReviewBtn.textContent = wrongTotal
     ? `📝 오늘 푼 퀴즈 오답 복습하기 (${wrongTotal}문제)`
     : '📝 오늘 푼 퀴즈 돌아보기';
-  if (buildButton) buildButton.classList.add('hidden');
 
   gameOverModal.classList.remove('hidden');
   addActivityLog(`🏆 게임 종료! ${ranking[0].name} 우승`);
@@ -1168,7 +1197,6 @@ function endTurn() {
     roundNumber.textContent = roundLabel();
   }
   currentPlayerIndex = next;
-  buildUsedThisTurn = false;   // 새 차례 — 건축 기회가 다시 생깁니다.
 
   updateAllRows();
   if (!checkGameOver('round')) updateCurrentTurnUI();
@@ -1953,82 +1981,6 @@ function recordVisit(playerIndex, spaceIndex) {
   visited[space.continent] = (visited[space.continent] || 0) + 1;
 }
 
-// ============================================================
-// 건물 짓기 — 문제를 맞히면 내 땅 중 원하는 곳에 짓습니다.
-// ============================================================
-let buildUsedThisTurn = false;   // 한 차례에 건물은 한 채까지
-
-// 아직 최고 단계가 아닌 내 땅 목록
-function buildableLands(playerIndex) {
-  const list = [];
-  propertyState.forEach((state, i) => {
-    if (state.owner === playerIndex && state.buildings < BUILD_RATES.length) list.push(i);
-  });
-  return list;
-}
-
-function canBuildNow(playerIndex) {
-  const player = gamePlayers[playerIndex];
-  if (!player || player.isBankrupt || isGameFinished || isMoving) return false;
-  if (buildUsedThisTurn) return false;
-  return buildableLands(playerIndex).some((i) => {
-    return player.items.includes('free-build') || player.money >= nextBuildCostOf(i);
-  });
-}
-
-function updateBuildButton() {
-  if (!buildButton) return;
-  const current = gamePlayers[currentPlayerIndex];
-  const hide = !current || current.isAI || isGameFinished;
-  buildButton.classList.toggle('hidden', hide);
-  if (hide) return;
-  const usable = canBuildNow(currentPlayerIndex);
-  buildButton.disabled = !usable;
-  buildBtnText.textContent = buildUsedThisTurn ? '이번 차례 건축 완료' : '건물 짓기';
-}
-
-// 내 땅 목록을 펼쳐 어디에 지을지 먼저 고르게 합니다.
-// 고른 나라의 문제를 맞혀야 실제로 지을 수 있습니다.
-function openBuildPicker(playerIndex, onFinish) {
-  const player = gamePlayers[playerIndex];
-  const lands = buildableLands(playerIndex);
-  const finish = onFinish || (() => {});
-
-  if (!lands.length) {
-    showToast('🏠', '아직 건물을 지을 수 있는 땅이 없습니다.', 'info');
-    finish();
-    return;
-  }
-
-  const choices = lands.map((i) => {
-    const space = spaces[i];
-    const state = propertyState[i];
-    const cost = nextBuildCostOf(i);
-    const nextToll = Math.round(space.cost * TOLL_RATES[Math.min(state.buildings + 1, 3)]);
-    const buildName = BUILD_NAMES[Math.min(state.buildings, BUILD_NAMES.length - 1)];
-    const free = player.items.includes('free-build');
-    const afford = free || player.money >= cost;
-    return {
-      label: `${space.name} · ${buildName}`,
-      sub: afford
-        ? `${free ? '무료 증축권' : won(cost)} · 통행세 ${won(tollOf(i))} → ${won(nextToll)}`
-        : `${won(cost)} 필요 · 현금이 모자랍니다`,
-      disabled: !afford,
-      onClick: () => offerBuild(playerIndex, i, finish)
-    };
-  });
-
-  openChoiceModal({
-    eyebrow: 'BUILD · 어디에 지을까요?',
-    icon: '🏗️',
-    title: '어느 나라에 건물을 지을까요?',
-    desc: `고른 나라의 문제를 맞혀야 건물을 지을 수 있습니다. 통행세가 비싼 곳일수록 값도 비쌉니다. 보유 현금은 ${won(player.money)}입니다.`,
-    choices,
-    buttons: [{ label: '이번에는 짓지 않기', onClick: finish }]
-  });
-  cardChoices.classList.add('build-choices');
-}
-
 function revealAnswer(quiz) {
   [...quizOptions.querySelectorAll('button')].forEach(b => {
     if (b.textContent === quiz.answer) b.classList.add('correct');
@@ -2179,31 +2131,20 @@ function resolveLanding(playerIndex) {
   }
 
   // ── 4. 내 땅: 문제를 맞혀야 건물을 지을 수 있습니다.
-  //         지을 곳은 밟은 칸이 아니라 내 땅 중에서 골라 정합니다.
-  if (state.owner === playerIndex) {
-    const finishTurn = () => setTimeout(endTurn, 700);
-    if (buildUsedThisTurn) {
-      showToast('🏠', `${space.name}은(는) 내 땅입니다. 이번 차례에는 이미 건물을 지었습니다.`, 'info');
-      finishTurn();
-      return;
-    }
-    if (player.isAI) { offerBuild(playerIndex, spaceIndex, finishTurn); return; }
-    openBuildPicker(playerIndex, finishTurn);
-    return;
-  }
+  if (state.owner === playerIndex) { offerBuild(playerIndex, spaceIndex); return; }
 
   // ── 5. 남의 땅: 통행세
   payToll(playerIndex, state.owner, spaceIndex);
 }
 
 // 내 땅에 도착했을 때 — 그 나라 문제를 맞혀야 건물을 지을 수 있습니다.
-function offerBuild(playerIndex, spaceIndex, onFinish) {
+function offerBuild(playerIndex, spaceIndex) {
   const player = gamePlayers[playerIndex];
   const state = propertyState[spaceIndex];
   const space = spaces[spaceIndex];
   const cost = nextBuildCostOf(spaceIndex);
   const hasFree = player.items.includes('free-build');
-  const finish = onFinish || (() => setTimeout(endTurn, 700));
+  const finish = () => setTimeout(endTurn, 700);
 
   if (state.buildings >= BUILD_RATES.length) {
     showToast('🏠', `${space.name}은(는) 이미 ${BUILD_NAMES[BUILD_NAMES.length - 1]}까지 지었습니다. 통행세 ${won(tollOf(spaceIndex))}`, 'info');
@@ -2219,13 +2160,11 @@ function offerBuild(playerIndex, spaceIndex, onFinish) {
   }
 
   const quiz = countryQuiz(space.name);
-  if (!quiz) { showBuildChoice(playerIndex, spaceIndex, finish); return; }   // 문제가 없는 칸은 그대로 진행
+  if (!quiz) { showBuildChoice(playerIndex, spaceIndex); return; }   // 문제가 없는 칸은 그대로 진행
   activeQuizSpace = spaceIndex;
 
   if (player.isAI) {
     handleAIQuiz(playerIndex, spaceIndex, quiz, false, space, (correct) => {
-      buildUsedThisTurn = true;
-      updateBuildButton();
       if (!correct) {
         showToast('🏠', `🤖 <b>${safeName(player.name)}</b> 님이 건축 문제를 틀려 건물을 짓지 못했습니다.`, 'info');
         finish();
@@ -2233,7 +2172,7 @@ function offerBuild(playerIndex, spaceIndex, onFinish) {
       }
       player.money += landQuizReward;
       updateAllRows();
-      showBuildChoice(playerIndex, spaceIndex, finish);
+      showBuildChoice(playerIndex, spaceIndex);
     }, 'build');
     return;
   }
@@ -2256,8 +2195,6 @@ function offerBuild(playerIndex, spaceIndex, onFinish) {
     btn.addEventListener('click', () => {
       [...quizOptions.querySelectorAll('button')].forEach(b => { b.disabled = true; });
       const correct = option === quiz.answer;
-      buildUsedThisTurn = true;   // 맞히든 틀리든 이번 차례의 건축 기회는 여기서 씁니다
-      updateBuildButton();
       recordQuiz(playerIndex, { space, quiz, selected: option, correct });
       showExplanation(quiz.explanation);
 
@@ -2268,7 +2205,7 @@ function offerBuild(playerIndex, spaceIndex, onFinish) {
         updateAllRows();
         quizResult.textContent = `🎉 정답입니다! 탐험 수당 ${won(landQuizReward)}을 받고 건물을 지을 수 있습니다.`;
         showToast('🎓', `정답! 탐험 수당 <b>${won(landQuizReward)}</b>을 받았습니다.`, 'good');
-        afterQuizAction = () => showBuildChoice(playerIndex, spaceIndex, finish);
+        afterQuizAction = () => showBuildChoice(playerIndex, spaceIndex);
       } else {
         btn.classList.add('incorrect');
         sounds.playIncorrect();
@@ -2286,13 +2223,13 @@ function offerBuild(playerIndex, spaceIndex, onFinish) {
 }
 
 // 문제를 맞힌 뒤 실제로 지을지 고르는 단계
-function showBuildChoice(playerIndex, spaceIndex, onFinish) {
+function showBuildChoice(playerIndex, spaceIndex) {
   const player = gamePlayers[playerIndex];
   const state = propertyState[spaceIndex];
   const space = spaces[spaceIndex];
   const cost = nextBuildCostOf(spaceIndex);
   const hasFree = player.items.includes('free-build');
-  const finish = onFinish || (() => setTimeout(endTurn, 700));
+  const finish = () => setTimeout(endTurn, 700);
 
   const build = (free) => {
     const builtName = BUILD_NAMES[Math.min(state.buildings, BUILD_NAMES.length - 1)];
@@ -2303,16 +2240,14 @@ function showBuildChoice(playerIndex, spaceIndex, onFinish) {
     showToast('🏠', free
       ? `무료 증축권으로 ${space.name}에 <b>${builtName}</b>을(를) 지었습니다! 통행세 ${won(tollOf(spaceIndex))}`
       : `${space.name}에 <b>${builtName}</b>을(를) 지었습니다. <b>-${won(cost)}</b> · 통행세 ${won(tollOf(spaceIndex))}`, 'good');
-    buildUsedThisTurn = true;
     updateAllRows();
     updatePropertyTile(spaceIndex);
-    updateBuildButton();
     finish();
   };
 
   if (player.isAI) {
     if (hasFree) build(true);
-    else if (player.money - cost >= 150000) build(false);
+    else if (player.money - cost >= 60000) build(false);
     else { showToast('🏳️', `🤖 <b>${safeName(player.name)}</b> 님이 ${space.name}에서 쉬어 갑니다.`, 'info'); finish(); }
     return;
   }
@@ -2420,12 +2355,16 @@ const DIE_LANDING = {
 
 // 카메라를 위쪽으로 올려 윗면이 보이게 하는 고정 기울기
 const DIE_TILT = -58;
+// 눈이 나온 면만 정면으로 보면 납작해 보입니다.
+// 세운 쪽으로 살짝 틀어 윗면·앞면·옆면 세 면이 함께 보이게 합니다.
+// 기울기가 45도보다 작으므로 주사위 눈은 그대로 정면을 향합니다.
+const DIE_YAW = -21;
 // 주사위마다 지금까지 누적된 회전(도)을 따로 기억한다
 const dieSpins = diceElements.map(() => ({ x: 0, y: 0 }));
 
 function applyDieTransform(dieIndex) {
   const spin = dieSpins[dieIndex];
-  diceElements[dieIndex].style.transform = `rotateX(${DIE_TILT + spin.x}deg) rotateY(${spin.y}deg)`;
+  diceElements[dieIndex].style.transform = `rotateY(${DIE_YAW}deg) rotateX(${DIE_TILT + spin.x}deg) rotateY(${spin.y}deg)`;
 }
 
 function setDieFace(dieIndex, value, spins) {
@@ -2453,50 +2392,8 @@ function currentDieTopFace(dieIndex = 0) {
 
 diceElements.forEach((_, i) => setDieFace(i, 1, 0));
 
-// AI가 건물을 올리기에 가장 이득인 땅 — 통행세가 가장 많이 오르는 곳
-function aiPickBuildLand(playerIndex) {
-  const player = gamePlayers[playerIndex];
-  let best = -1;
-  let bestGain = 0;
-  buildableLands(playerIndex).forEach((i) => {
-    const cost = nextBuildCostOf(i);
-    if (player.money - cost < 150000) return;
-    const stage = propertyState[i].buildings;
-    const gain = spaces[i].cost * (TOLL_RATES[Math.min(stage + 1, 3)] - TOLL_RATES[Math.min(stage, 3)]);
-    if (gain > bestGain) { bestGain = gain; best = i; }
-  });
-  return best;
-}
-
-// AI도 사람과 똑같이 차례당 한 채까지 지습니다.
-function aiTryBuild(playerIndex) {
-  const player = gamePlayers[playerIndex];
-  if (!player || !player.isAI || buildUsedThisTurn) return;
-  const target = aiPickBuildLand(playerIndex);
-  if (target === -1) return;
-
-  buildUsedThisTurn = true;
-  const space = spaces[target];
-  const quiz = countryQuiz(space.name);
-  const correct = Math.random() < 0.78;
-  recordQuiz(playerIndex, { space, quiz, selected: null, correct });
-  if (!correct) return;
-
-  const state = propertyState[target];
-  const cost = nextBuildCostOf(target);
-  const buildName = BUILD_NAMES[Math.min(state.buildings, BUILD_NAMES.length - 1)];
-  player.money -= cost;
-  state.buildings += 1;
-  sounds.playCoin();
-  showToast('🏠', `🤖 <b>${safeName(player.name)}</b> 님이 ${space.name}에 <b>${buildName}</b>을(를) 지었습니다. <b>-${won(cost)}</b>`, 'info');
-  updateAllRows();
-  updatePropertyTile(target);
-}
-
 function triggerDiceRoll() {
   if (!gamePlayers.length || isGameFinished || isMoving) return;
-  const roller = gamePlayers[currentPlayerIndex];
-  if (roller && roller.isAI) aiTryBuild(currentPlayerIndex);
   rollButton.disabled = true;
   sounds.playRoll();
 
@@ -2522,14 +2419,6 @@ function triggerDiceRoll() {
 }
 
 rollButton.addEventListener('click', triggerDiceRoll);
-
-if (buildButton) {
-  buildButton.addEventListener('click', () => {
-    if (!canBuildNow(currentPlayerIndex)) return;
-    // 주사위를 굴리기 전에 짓는 것이므로 차례를 넘기지 않습니다.
-    openBuildPicker(currentPlayerIndex, () => { updateBuildButton(); });
-  });
-}
 
 // ============================================================
 // 구매 / 건너뛰기 / 확인 버튼
@@ -2626,7 +2515,6 @@ function renderNameFields() {
 
 function createPlayers(playerConfigs) {
   extraRollQueue.length = 0;
-  buildUsedThisTurn = false;
   gamePlayers = playerConfigs.map((cfg, index) => {
     renderPlayerPiece(index, 0);
     return {
