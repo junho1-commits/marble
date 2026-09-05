@@ -1,46 +1,38 @@
 {
-  "code.headers-config": {
-    "status": "pass",
-    "evidence": "정적 HTML 앱(GitHub Pages)으로 index.html 및 privacy.html 내 meta 태그로 보안 및 메타데이터가 선언되어 있음"
-  },
-  "code.dangerous-pattern": {
-    "status": "pass",
-    "evidence": "script.js 내 innerHTML 대입은 외부 입력이 아닌 자체 퀴즈 데이터 및 UI 포맷팅이며, 사용자 입력은 safeName()으로 XSS 이스케이프 처리됨"
-  },
   "edzip.1-1": {
     "status": "pass",
-    "evidence": "privacy.html 제2조에 명시된 대로 회원가입/로그인이 없으며 학생 개인식별정보를 일체 수집하지 않음 (Case A)"
+    "evidence": "privacy.html:114-119 (제2조 처리하는 개인정보의 항목: 수집하는 개인식별정보 일체 없음, 닉네임은 기기 메모리 내 일시 사용 후 즉시 소멸)"
   },
   "edzip.1-2": {
     "status": "pass",
-    "evidence": "privacy.html 제1조에 6학년 사회과 교육용 목적임을 명시하고 개인정보 미수집을 고지함"
+    "evidence": "privacy.html:111-113 (제1조 개인정보의 처리 목적: 초등 6학년 사회과 교육 지원 목적 명시 및 개인정보 미수집 고지)"
   },
   "edzip.1-3": {
     "status": "pass",
-    "evidence": "privacy.html 제2조 및 제4조에 수집 항목이 없으며 브라우저 세션 종료 시 로컬 임시 데이터가 즉시 소멸함을 고지함"
+    "evidence": "privacy.html:114-126 (제2조 및 제4조 수집 항목 없음 및 브라우저 세션 종료 시 로컬 임시 데이터 즉시 자동 소멸 고지)"
   },
   "edzip.2-1": {
     "status": "pass",
-    "evidence": "서버 DB가 없고 모든 웹 트래픽은 GitHub Pages의 TLSv1.3 HTTPS로 암호화 전송됨"
+    "evidence": "privacy.html:106-109 (Case A 정적 웹으로 서버 DB가 존재하지 않으며, 모든 웹 트래픽은 GitHub Pages TLSv1.3 HTTPS로 암호화됨)"
   },
   "edzip.3-1": {
     "status": "pass",
-    "evidence": "privacy.html 제4조에 저장되는 개인정보가 없어 별도 정정/삭제 대상이 없음을 명시함"
+    "evidence": "privacy.html:124-126 (제4조 개인정보의 파기: 서버에 저장되는 개인정보 데이터베이스가 존재하지 않아 별도 정정/삭제 대상 없음)"
   },
   "edzip.4-1": {
     "status": "pass",
-    "evidence": "privacy.html 제5조에 만 14세 미만 아동의 법정대리인 동의가 필요한 개인정보 수집 행위를 일체 하지 않음을 명시함"
+    "evidence": "privacy.html:127-129 (제5조 아동의 개인정보 보호: 만 14세 미만 아동 이용 시 법정대리인 동의가 필요한 개인정보 수집 행위를 일체 하지 않음)"
   },
   "edzip.5-1": {
     "status": "pass",
-    "evidence": "privacy.html 제6조에 관리자/개발자(교사 박준호, junho1@modeok.es.kr)의 정보가 공개되어 있음"
+    "evidence": "privacy.html:130-136 (제6조 개인정보 보호책임자 및 문의처: 교사 박준호, junho1@modeok.es.kr 명시)"
   },
   "edzip.5-2": {
     "status": "pass",
-    "evidence": "privacy.html 제3조에 개인정보의 제3자 제공을 일체 하지 않음을 명시함"
+    "evidence": "privacy.html:121-123 (제3조 개인정보의 제3자 제공 및 위탁: 학생 및 이용자 개인정보의 제3자 제공 없음)"
   },
   "edzip.5-3": {
     "status": "pass",
-    "evidence": "privacy.html 제3조에 외부 처리 위탁이 없음을 명시함"
+    "evidence": "privacy.html:121-123 (제3조 개인정보의 제3자 제공 및 위탁: 외부 업체에 처리를 위탁하지 않음)"
   }
 }

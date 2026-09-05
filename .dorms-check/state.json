@@ -122,6 +122,24 @@
         "eligible": true,
         "unmet": []
       }
+    },
+    {
+      "n": 6,
+      "at": "2026-09-05T12:17:50.871Z",
+      "security": {
+        "score": 57,
+        "grade": "F",
+        "eligible": false,
+        "blocking": [
+          "sec.header.csp",
+          "sec.transport.https-redirect",
+          "cors.policy"
+        ]
+      },
+      "edzip": {
+        "eligible": true,
+        "unmet": []
+      }
     }
   ],
   "items": {
@@ -198,10 +216,10 @@
       "regressed": false
     },
     "info.config-exposed": {
-      "status": "pass",
-      "firstFailRound": null,
+      "status": "fail",
+      "firstFailRound": 6,
       "fixedRound": null,
-      "regressed": false
+      "regressed": true
     },
     "info.source-map": {
       "status": "pass",

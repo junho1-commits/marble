@@ -8,7 +8,7 @@
 > 이 리포트는 dorms-check(코치)의 자체 점검 결과입니다. 최종 인증마크는 도름스 서버가 스스로 다시 검증해 발급하며, 이 리포트의 통과가 마크를 보장하지 않습니다.
 
 ## 보안 검토
-- 점수: 61/100 (D)
+- 점수: 57/100 (F)
 - 마크 자격(critical/high 0): 미충족
 
 ### 통과 항목(증빙)
@@ -17,7 +17,6 @@
 - [v] SSL 인증서 유효 — TLS 연결 성공 (TLSv1.3)
 - [v] 구버전 TLS 미사용 — TLS 버전 양호: TLSv1.3
 - [v] 민감 파일 노출(.env/.git) — 민감 파일(.env/.git) 노출 없음
-- [v] 설정 파일 노출 — 설정 파일 비노출
 - [v] 소스맵 노출 — 소스맵 참조 없음
 - [v] 에러 스택트레이스 노출 — 스택트레이스 노출 없음
 - [v] Mixed Content — mixed content 없음
@@ -25,8 +24,8 @@
 - [v] 설명 메타 — 설명 메타
 - [v] 모바일 viewport — viewport 메타
 - [v] Open Graph — Open Graph 태그
-- [v] 응답 속도 — 응답 시간 338ms
-- [v] 문서 크기 — 문서 크기 22KB
+- [v] 응답 속도 — 응답 시간 290ms
+- [v] 문서 크기 — 문서 크기 23KB
 - [v] 압축 — 압축: gzip
 - [v] 개인정보처리방침 — 개인정보처리방침 발견(link: privacy.html)
 - [v] 연락처 — 연락처/문의 정보 있음
@@ -48,6 +47,11 @@
 - 무엇: 내 화면을 남의 사이트가 몰래 안에 띄워 클릭을 가로채는 공격을 막는 설정이 없어요.
 - 지금 상태: 누락: x-frame-options (frame protection is missing)
 - AI에게 이렇게 시켜주세요: `정적 HTML 앱에 X-Frame-Options: DENY 헤더(또는 CSP frame-ancestors 'none')를 추가해줘.`
+
+#### [medium] 설정 파일 노출
+- 무엇: next.config·vercel.json 같은 설정 파일이 직접 열려요. 내부 구조가 노출돼요.
+- 지금 상태: 설정 파일 노출: /vercel.json
+- AI에게 이렇게 시켜주세요: `배포에서 설정 파일이 정적으로 서빙되지 않도록 해줘.`
 
 #### [low] X-Content-Type-Options: nosniff
 - 무엇: 브라우저가 파일 종류를 멋대로 추측해 생기는 공격을 막는 설정이 없어요.

@@ -1,5 +1,5 @@
 {
-  "at": "2026-09-05T12:13:39.027Z",
+  "at": "2026-09-05T12:17:50.876Z",
   "url": "https://junho1-commits.github.io/marble/",
   "results": [
     {
@@ -10,7 +10,7 @@
         "header": "content-security-policy",
         "value": null,
         "validation": "missing",
-        "observedAt": "2026-09-05T12:13:38.020Z"
+        "observedAt": "2026-09-05T12:17:47.559Z"
       }
     },
     {
@@ -21,7 +21,7 @@
         "header": "strict-transport-security",
         "value": "max-age=31556952",
         "validation": "valid",
-        "observedAt": "2026-09-05T12:13:38.022Z"
+        "observedAt": "2026-09-05T12:17:47.561Z"
       }
     },
     {
@@ -32,7 +32,7 @@
         "header": "x-frame-options",
         "value": null,
         "validation": "frame protection is missing",
-        "observedAt": "2026-09-05T12:13:38.022Z"
+        "observedAt": "2026-09-05T12:17:47.561Z"
       }
     },
     {
@@ -43,7 +43,7 @@
         "header": "x-content-type-options",
         "value": null,
         "validation": "missing",
-        "observedAt": "2026-09-05T12:13:38.022Z"
+        "observedAt": "2026-09-05T12:17:47.561Z"
       }
     },
     {
@@ -54,7 +54,7 @@
         "header": "referrer-policy",
         "value": null,
         "validation": "missing",
-        "observedAt": "2026-09-05T12:13:38.022Z"
+        "observedAt": "2026-09-05T12:17:47.561Z"
       }
     },
     {
@@ -65,7 +65,7 @@
         "header": "permissions-policy",
         "value": null,
         "validation": "missing",
-        "observedAt": "2026-09-05T12:13:38.022Z"
+        "observedAt": "2026-09-05T12:17:47.561Z"
       }
     },
     {
@@ -149,10 +149,12 @@
     },
     {
       "id": "info.config-exposed",
-      "status": "pass",
-      "observed": "설정 파일 비노출",
+      "status": "fail",
+      "observed": "설정 파일 노출: /vercel.json",
       "evidence": {
-        "exposed": []
+        "exposed": [
+          "/vercel.json"
+        ]
       }
     },
     {
@@ -223,17 +225,17 @@
     {
       "id": "perf.ttfb",
       "status": "pass",
-      "observed": "응답 시간 338ms",
+      "observed": "응답 시간 290ms",
       "evidence": {
-        "ms": 338
+        "ms": 290
       }
     },
     {
       "id": "perf.page-size",
       "status": "pass",
-      "observed": "문서 크기 22KB",
+      "observed": "문서 크기 23KB",
       "evidence": {
-        "bytes": 22206
+        "bytes": 23100
       }
     },
     {
@@ -655,7 +657,7 @@
     "url": "https://junho1-commits.github.io/marble/",
     "finalUrl": "https://junho1-commits.github.io/marble/",
     "httpStatus": 200,
-    "ttfbMs": 338,
+    "ttfbMs": 290,
     "observedHeaders": [
       "accept-ranges",
       "access-control-allow-origin",
@@ -682,6 +684,6 @@
       "x-served-by",
       "x-timer"
     ],
-    "scannedAt": "2026-09-05T12:13:38.249Z"
+    "scannedAt": "2026-09-05T12:17:50.102Z"
   }
 }
