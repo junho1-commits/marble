@@ -1,0 +1,16 @@
+{
+  "app": {
+    "name": "교실 속 세계일주",
+    "url": "https://junho1-commits.github.io/marble/",
+    "stack": "정적 HTML"
+  },
+  "tracks": [
+    "security",
+    "edzip"
+  ],
+  "edzipCase": "A",
+  "teacher": {
+    "dormsHandle": ""
+  },
+  "ownershipConfirmed": true
+}
