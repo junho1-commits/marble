@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 2,
+  "createdAt": "2026-09-05T12:14:14.543Z",
+  "root": ".",
+  "app": {
+    "name": "교실 속 세계일주",
+    "url": "https://junho1-commits.github.io/marble/",
+    "stack": "정적 HTML",
+    "description": ""
+  },
+  "inspection": {
+    "detected": {
+      "stack": "static",
+      "framework": "정적 HTML",
+      "applies": [
+        "static",
+        "vercel"
+      ],
+      "buildDir": ".",
+      "buildCandidates": [
+        ".",
+        "public",
+        "_site",
+        "dist"
+      ],
+      "hasPackageJson": false,
+      "hasSupabase": false
+    },
+    "evidence": [
+      {
+        "signal": "student-data",
+        "files": [
+          "answers.json",
+          "checklist.md",
+          "context-notes.md",
+          "privacy.html",
+          "script.js",
+          "tutorial.html",
+          "개선_대안.md",
+          "교사용_문제_및_보너스카드_가이드.md",
+          "버그리포트.md",
+          "사진확인결과.md",
+          "전문가_분석_보고서.md",
+          "클로드_수업용_개선_지시서.md"
+        ]
+      },
+      {
+        "signal": "privacy-page",
+        "files": [
+          "index.html",
+          "privacy.html"
+        ]
+      }
+    ],
+    "filesScanned": 20
+  },
+  "questions": [
+    {
+      "id": "studentData",
+      "ask": "학생의 이름·답안·작성물·학습 기록 등을 처리하나요?",
+      "values": [
+        "yes",
+        "no",
+        "unknown"
+      ]
+    },
+    {
+      "id": "curriculumContent",
+      "ask": "교과 성취기준에 맞춰 제작한 학습 콘텐츠가 앱 안에 포함되나요?",
+      "values": [
+        "yes",
+        "no",
+        "unknown"
+      ]
+    },
+    {
+      "id": "externalTransfer",
+      "ask": "이용자·학생 정보가 호스팅·데이터베이스·외부 AI 등 학교 밖 서비스로 나가나요?",
+      "values": [
+        "yes",
+        "no",
+        "unknown"
+      ]
+    },
+    {
+      "id": "childDirectUse",
+      "ask": "만 14세 미만 학생이 직접 가입하거나 이용하나요?",
+      "values": [
+        "yes",
+        "no",
+        "unknown"
+      ]
+    },
+    {
+      "id": "publicPrivacyUrl",
+      "ask": "외부에서 바로 열 수 있는 개인정보처리방침 주소가 있나요?",
+      "values": [
+        "yes",
+        "no",
+        "unknown"
+      ]
+    }
+  ],
+  "proposedChanges": [
+    {
+      "path": ".gitignore",
+      "action": "append-if-missing",
+      "detail": ".dorms-check/private/ 생성물 Git 추적 차단"
+    },
+    {
+      "path": "index.html",
+      "action": "review-and-supplement-by-agent",
+      "detail": "실제 데이터 흐름에 맞는 공개 개인정보처리방침"
+    },
+    {
+      "path": ".dorms-check\\private\\edzip/YYYY-MM-DD/",
+      "action": "generate",
+      "detail": "에듀집 제출용 HWPX·PDF·Markdown 서류와 공식 원본·출처 복사본"
+    }
+  ],
+  "guardrails": [
+    "개인정보·연락처·학교·서명·인영은 수집하지 않고 문서 빈칸으로 남긴다.",
+    "외부 제출·배포·메시지 발송은 하지 않는다.",
+    "적용은 이 계획의 sha256과 --confirm-apply가 모두 맞을 때만 한다."
+  ],
+  "sha256": "04a10fcdfd46dbc78b1a8d0fb00747db90de6101263bfea5a2ef84dcf4518386"
+}

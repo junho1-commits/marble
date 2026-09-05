@@ -104,6 +104,24 @@
         "eligible": true,
         "unmet": []
       }
+    },
+    {
+      "n": 5,
+      "at": "2026-09-05T12:13:39.023Z",
+      "security": {
+        "score": 61,
+        "grade": "D",
+        "eligible": false,
+        "blocking": [
+          "sec.header.csp",
+          "sec.transport.https-redirect",
+          "cors.policy"
+        ]
+      },
+      "edzip": {
+        "eligible": true,
+        "unmet": []
+      }
     }
   ],
   "items": {
